@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useMemo, useCallback } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   Layers,
@@ -11,11 +11,13 @@ import {
   RotateCcw,
   Flame,
   Trophy,
+  Loader2,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
 import { cn } from "@/lib/utils";
-import { hsk1Vocabulary } from "@/lib/seed-data";
+import { useUser } from "@/lib/user-context";
+import { getDueFlashcards, addXP, saveSrsReview, createNotification, type DbVocab } from "@/lib/db";
 import {
   createNewCard,
   reviewCard,
@@ -32,24 +34,29 @@ interface SessionResult {
 }
 
 export default function FlashcardsClient() {
-  // Build initial SRS deck from vocab
-  const initialDeck = useMemo(
-    () => hsk1Vocabulary.slice(0, 15).map((v) => createNewCard(v.id)),
-    []
-  );
-
-  const [deck, setDeck] = useState<SRSCard[]>(initialDeck);
+  const { id: userId } = useUser();
+  const [vocabList, setVocabList] = useState<DbVocab[]>([]);
+  const [deck, setDeck] = useState<SRSCard[]>([]);
   const [currentIdx, setCurrentIdx] = useState(0);
   const [isFlipped, setIsFlipped] = useState(false);
   const [sessionResults, setSessionResults] = useState<SessionResult[]>([]);
   const [sessionDone, setSessionDone] = useState(false);
+  const [loading, setLoading] = useState(true);
+
+  // Fetch due flashcards from Supabase
+  useEffect(() => {
+    if (!userId) return;
+    getDueFlashcards(userId, 15).then((vocab) => {
+      setVocabList(vocab);
+      setDeck(vocab.map((v) => createNewCard(v.id)));
+      setLoading(false);
+    });
+  }, [userId]);
 
   const currentCard = deck[currentIdx];
-  const currentWord = hsk1Vocabulary.find(
-    (v) => v.id === currentCard?.vocabId
-  );
+  const currentWord = vocabList.find((v) => v.id === currentCard?.vocabId);
   const remaining = deck.length - currentIdx;
-  const progressPct = (currentIdx / deck.length) * 100;
+  const progressPct = deck.length > 0 ? (currentIdx / deck.length) * 100 : 0;
 
   const handleRating = useCallback(
     (rating: SRSRating) => {
@@ -60,14 +67,22 @@ export default function FlashcardsClient() {
       setDeck((prev) =>
         prev.map((c) =>
           c.vocabId === currentCard.vocabId
-            ? {
-                ...c,
-                ...result,
-                lastReviewedAt: new Date(),
-              }
+            ? { ...c, ...result, lastReviewedAt: new Date() }
             : c
         )
       );
+
+      // Save to Supabase
+      if (userId) {
+        saveSrsReview(
+          userId,
+          currentCard.vocabId,
+          result.easeFactor,
+          result.intervalDays,
+          result.repetitions,
+          result.nextReviewAt
+        );
+      }
 
       // Record result
       setSessionResults((prev) => [
@@ -81,13 +96,24 @@ export default function FlashcardsClient() {
         setIsFlipped(false);
       } else {
         setSessionDone(true);
+        // Award XP and notify
+        if (userId) {
+          addXP(userId, 10);
+          createNotification(
+            userId,
+            "flashcards_due",
+            "Kartochkalar takrorlandi!",
+            `${deck.length} ta kartochka takrorlandi. +10 XP`,
+            "/flashcards"
+          );
+        }
       }
     },
-    [currentCard, currentWord, currentIdx, deck.length]
+    [currentCard, currentWord, currentIdx, deck.length, userId]
   );
 
   const restartSession = () => {
-    setDeck(initialDeck.map((c) => createNewCard(c.vocabId)));
+    setDeck(vocabList.map((v) => createNewCard(v.id)));
     setCurrentIdx(0);
     setIsFlipped(false);
     setSessionResults([]);
@@ -97,6 +123,29 @@ export default function FlashcardsClient() {
   const goodCount = sessionResults.filter((r) => r.rating === "good").length;
   const hardCount = sessionResults.filter((r) => r.rating === "hard").length;
   const againCount = sessionResults.filter((r) => r.rating === "again").length;
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center py-20">
+        <Loader2 className="w-6 h-6 animate-spin text-muted-foreground" />
+      </div>
+    );
+  }
+
+  if (vocabList.length === 0) {
+    return (
+      <div className="max-w-lg mx-auto text-center py-20">
+        <Layers className="w-10 h-10 text-muted-foreground mx-auto mb-4" />
+        <h2 className="text-xl font-bold mb-2">Kartochkalar yo&apos;q</h2>
+        <p className="text-muted-foreground mb-4">
+          Avval darslarni o&apos;rganing, keyin kartochkalar paydo bo&apos;ladi.
+        </p>
+        <Button render={<Link href="/lessons" />} className="rounded-xl bg-primary hover:bg-primary/90 text-primary-foreground">
+          Darslarga o&apos;tish
+        </Button>
+      </div>
+    );
+  }
 
   // Session complete screen
   if (sessionDone) {
@@ -122,7 +171,6 @@ export default function FlashcardsClient() {
             </p>
           </div>
 
-          {/* Score breakdown */}
           <div className="grid grid-cols-3 gap-3">
             <div className="rounded-xl bg-green-500/10 p-3 text-center">
               <CheckCircle2 className="w-5 h-5 text-green-500 mx-auto mb-1" />
@@ -156,7 +204,6 @@ export default function FlashcardsClient() {
             </p>
           </div>
 
-          {/* Cards that need review */}
           {againCount > 0 && (
             <div className="text-left">
               <p className="text-sm font-medium mb-2">
@@ -203,7 +250,6 @@ export default function FlashcardsClient() {
 
   return (
     <div className="max-w-lg mx-auto space-y-6">
-      {/* Header */}
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-2">
           <Layers className="w-5 h-5 text-primary" />
@@ -215,7 +261,6 @@ export default function FlashcardsClient() {
         </div>
       </div>
 
-      {/* Progress */}
       <div className="space-y-1.5">
         <div className="flex justify-between text-xs text-muted-foreground">
           <span>
@@ -226,7 +271,6 @@ export default function FlashcardsClient() {
         <Progress value={progressPct} className="h-2 rounded-full" />
       </div>
 
-      {/* Card */}
       <AnimatePresence mode="wait">
         <motion.div
           key={currentWord.id}
@@ -239,7 +283,6 @@ export default function FlashcardsClient() {
         </motion.div>
       </AnimatePresence>
 
-      {/* Rating buttons — only visible when flipped */}
       <AnimatePresence>
         {isFlipped && (
           <motion.div
@@ -257,12 +300,8 @@ export default function FlashcardsClient() {
               )}
             >
               <XCircle className="w-6 h-6 text-red-500" />
-              <span className="text-sm font-semibold text-red-600">
-                Bilmayman
-              </span>
-              <span className="text-[10px] text-muted-foreground">
-                Qayta ko&apos;rish
-              </span>
+              <span className="text-sm font-semibold text-red-600">Bilmayman</span>
+              <span className="text-[10px] text-muted-foreground">Qayta ko&apos;rish</span>
             </button>
 
             <button
@@ -273,12 +312,8 @@ export default function FlashcardsClient() {
               )}
             >
               <AlertTriangle className="w-6 h-6 text-amber-500" />
-              <span className="text-sm font-semibold text-amber-600">
-                Qiyin
-              </span>
-              <span className="text-[10px] text-muted-foreground">
-                Tez takrorlash
-              </span>
+              <span className="text-sm font-semibold text-amber-600">Qiyin</span>
+              <span className="text-[10px] text-muted-foreground">Tez takrorlash</span>
             </button>
 
             <button
@@ -289,18 +324,13 @@ export default function FlashcardsClient() {
               )}
             >
               <CheckCircle2 className="w-6 h-6 text-green-500" />
-              <span className="text-sm font-semibold text-green-600">
-                Bilaman
-              </span>
-              <span className="text-[10px] text-muted-foreground">
-                Keyinroq
-              </span>
+              <span className="text-sm font-semibold text-green-600">Bilaman</span>
+              <span className="text-[10px] text-muted-foreground">Keyinroq</span>
             </button>
           </motion.div>
         )}
       </AnimatePresence>
 
-      {/* Hint when not flipped */}
       {!isFlipped && (
         <p className="text-center text-sm text-muted-foreground">
           Kartochkani bosib tarjimani ko&apos;ring, keyin baholang

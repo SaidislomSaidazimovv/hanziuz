@@ -16,30 +16,30 @@ import {
 import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
 import { cn } from "@/lib/utils";
-import type { Lesson, VocabWord } from "@/lib/seed-data";
+import type { DbLesson, DbVocab } from "@/lib/db";
 import Link from "next/link";
 
 type QuestionType = "hanzi-to-uz" | "uz-to-hanzi" | "pinyin-to-uz";
 
 interface Question {
   type: QuestionType;
-  word: VocabWord;
+  word: DbVocab;
   prompt: string;
   correctAnswer: string;
   options: string[];
 }
 
 interface QuizComponentProps {
-  lesson: Lesson;
-  vocab: VocabWord[];
-  allVocab: VocabWord[];
+  lesson: DbLesson;
+  vocab: DbVocab[];
+  allVocab: DbVocab[];
 }
 
 const TIMER_SECONDS = 15;
 
 function buildQuestions(
-  vocab: VocabWord[],
-  allVocab: VocabWord[]
+  vocab: DbVocab[],
+  allVocab: DbVocab[]
 ): Question[] {
   const questions: Question[] = [];
   const types: QuestionType[] = ["hanzi-to-uz", "uz-to-hanzi", "pinyin-to-uz"];
@@ -54,13 +54,13 @@ function buildQuestions(
     switch (type) {
       case "hanzi-to-uz":
         prompt = word.hanzi;
-        correctAnswer = word.meaningUz;
+        correctAnswer = word.meaning_uz;
         pool = allVocab
           .filter((w) => w.id !== word.id)
-          .map((w) => w.meaningUz);
+          .map((w) => w.meaning_uz);
         break;
       case "uz-to-hanzi":
-        prompt = word.meaningUz;
+        prompt = word.meaning_uz;
         correctAnswer = word.hanzi;
         pool = allVocab
           .filter((w) => w.id !== word.id)
@@ -68,10 +68,10 @@ function buildQuestions(
         break;
       case "pinyin-to-uz":
         prompt = word.pinyin;
-        correctAnswer = word.meaningUz;
+        correctAnswer = word.meaning_uz;
         pool = allVocab
           .filter((w) => w.id !== word.id)
-          .map((w) => w.meaningUz);
+          .map((w) => w.meaning_uz);
         break;
     }
 
@@ -109,7 +109,7 @@ export default function QuizComponent({
   const [timeLeft, setTimeLeft] = useState(TIMER_SECONDS);
   const [isSpeaking, setIsSpeaking] = useState(false);
   const [results, setResults] = useState<
-    { word: VocabWord; correct: boolean }[]
+    { word: DbVocab; correct: boolean }[]
   >([]);
 
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
@@ -230,7 +230,7 @@ export default function QuizComponent({
     const total = questions.length;
     const pct = Math.round((score / total) * 100);
     const wrongAnswers = results.filter((r) => !r.correct);
-    const xpEarned = Math.round((score / total) * lesson.xpReward);
+    const xpEarned = Math.round((score / total) * lesson.xp_reward);
 
     return (
       <motion.div
@@ -255,7 +255,7 @@ export default function QuizComponent({
 
         <div>
           <h2 className="text-2xl font-bold">Test yakunlandi!</h2>
-          <p className="text-muted-foreground mt-1">{lesson.titleUz}</p>
+          <p className="text-muted-foreground mt-1">{lesson.title_uz}</p>
         </div>
 
         {/* Score */}
@@ -306,7 +306,7 @@ export default function QuizComponent({
                     {r.word.pinyin}
                   </span>
                   <span className="text-sm font-medium ml-auto">
-                    {r.word.meaningUz}
+                    {r.word.meaning_uz}
                   </span>
                 </div>
               ))}
@@ -349,7 +349,7 @@ export default function QuizComponent({
       <div className="flex items-center justify-between">
         <div>
           <p className="text-sm text-muted-foreground">
-            {lesson.titleUz}
+            {lesson.title_uz}
           </p>
           <div className="flex items-center gap-3 mt-0.5">
             <span className="text-xs font-medium">

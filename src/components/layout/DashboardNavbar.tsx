@@ -23,6 +23,8 @@ import {
 } from "lucide-react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Input } from "@/components/ui/input";
+import SearchBar from "@/components/layout/SearchBar";
+import NotificationBell from "@/components/layout/NotificationBell";
 import { usePathname } from "next/navigation";
 import { createClient } from "@/lib/supabase";
 import { useUser } from "@/lib/user-context";
@@ -101,13 +103,7 @@ export default function DashboardNavbar() {
 
           {/* Search */}
           <div className="hidden sm:flex items-center max-w-md w-80">
-            <div className="relative w-full">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-              <Input
-                placeholder="So'z yoki dars qidirish..."
-                className="pl-9 rounded-xl h-9 bg-secondary border-0"
-              />
-            </div>
+            <SearchBar />
           </div>
         </div>
 
@@ -125,13 +121,7 @@ export default function DashboardNavbar() {
             )}
           </button>
 
-          <button
-            className="w-9 h-9 rounded-xl flex items-center justify-center hover:bg-secondary transition-colors relative"
-            aria-label="Bildirishnomalar"
-          >
-            <Bell className="w-4 h-4" />
-            <span className="absolute top-2 right-2 w-2 h-2 bg-primary rounded-full" />
-          </button>
+          <NotificationBell />
 
           {/* User dropdown */}
           <div className="relative" ref={userMenuRef}>

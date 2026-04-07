@@ -1,9 +1,9 @@
 "use client";
 
-import { useMemo } from "react";
-import { ArrowLeft } from "lucide-react";
+import { useState, useEffect } from "react";
+import { ArrowLeft, Loader2 } from "lucide-react";
 import Link from "next/link";
-import { lessons, hsk1Vocabulary } from "@/lib/seed-data";
+import { getLesson, getLessonVocab, type DbLesson, type DbVocab } from "@/lib/db";
 import LessonContent from "@/components/lessons/LessonContent";
 
 interface SingleLessonClientProps {
@@ -11,17 +11,27 @@ interface SingleLessonClientProps {
 }
 
 export default function SingleLessonClient({ lessonId }: SingleLessonClientProps) {
-  const lesson = useMemo(
-    () => lessons.find((l) => l.id === lessonId),
-    [lessonId]
-  );
+  const [lesson, setLesson] = useState<DbLesson | null>(null);
+  const [vocab, setVocab] = useState<DbVocab[]>([]);
+  const [loading, setLoading] = useState(true);
 
-  const vocab = useMemo(() => {
-    if (!lesson) return [];
-    return lesson.vocabIds
-      .map((id) => hsk1Vocabulary.find((v) => v.id === id))
-      .filter(Boolean) as typeof hsk1Vocabulary;
-  }, [lesson]);
+  useEffect(() => {
+    Promise.all([getLesson(lessonId), getLessonVocab(lessonId)]).then(
+      ([l, v]) => {
+        setLesson(l);
+        setVocab(v);
+        setLoading(false);
+      }
+    );
+  }, [lessonId]);
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center py-20">
+        <Loader2 className="w-6 h-6 animate-spin text-muted-foreground" />
+      </div>
+    );
+  }
 
   if (!lesson) {
     return (
@@ -41,7 +51,7 @@ export default function SingleLessonClient({ lessonId }: SingleLessonClientProps
   if (vocab.length === 0) {
     return (
       <div className="max-w-3xl mx-auto text-center py-20">
-        <p className="text-2xl font-bold mb-2">{lesson.titleUz}</p>
+        <p className="text-2xl font-bold mb-2">{lesson.title_uz}</p>
         <p className="text-muted-foreground mb-4">
           Bu dars uchun kontentlar tayyorlanmoqda...
         </p>

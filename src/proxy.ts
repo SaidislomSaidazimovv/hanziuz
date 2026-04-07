@@ -1,7 +1,7 @@
 import { createServerClient } from "@supabase/ssr";
 import { NextResponse, type NextRequest } from "next/server";
 
-const protectedRoutes = [
+const protectedPrefixes = [
   "/dashboard",
   "/lessons",
   "/flashcards",
@@ -11,9 +11,20 @@ const protectedRoutes = [
   "/settings",
 ];
 
-const authRoutes = ["/login", "/register"];
+const authPrefixes = ["/login", "/register"];
 
 export async function proxy(request: NextRequest) {
+  const pathname = request.nextUrl.pathname;
+
+  // Skip auth check entirely for public pages — no Supabase call needed
+  const needsAuthCheck =
+    protectedPrefixes.some((p) => pathname.startsWith(p)) ||
+    authPrefixes.some((p) => pathname.startsWith(p));
+
+  if (!needsAuthCheck) {
+    return NextResponse.next({ request });
+  }
+
   let supabaseResponse = NextResponse.next({ request });
 
   const supabase = createServerClient(
@@ -25,7 +36,7 @@ export async function proxy(request: NextRequest) {
           return request.cookies.getAll();
         },
         setAll(cookiesToSet) {
-          cookiesToSet.forEach(({ name, value, options }) =>
+          cookiesToSet.forEach(({ name, value }) =>
             request.cookies.set(name, value)
           );
           supabaseResponse = NextResponse.next({ request });
@@ -37,14 +48,14 @@ export async function proxy(request: NextRequest) {
     }
   );
 
+  // Use getSession() — reads JWT from cookie locally, no network request.
+  // This is fast (<1ms) vs getUser() which calls Supabase API (200-700ms).
   const {
-    data: { user },
-  } = await supabase.auth.getUser();
-
-  const pathname = request.nextUrl.pathname;
+    data: { session },
+  } = await supabase.auth.getSession();
 
   // Redirect unauthenticated users away from protected routes
-  if (!user && protectedRoutes.some((route) => pathname.startsWith(route))) {
+  if (!session && protectedPrefixes.some((p) => pathname.startsWith(p))) {
     const url = request.nextUrl.clone();
     url.pathname = "/login";
     url.searchParams.set("redirect", pathname);
@@ -52,7 +63,7 @@ export async function proxy(request: NextRequest) {
   }
 
   // Redirect authenticated users away from auth pages
-  if (user && authRoutes.some((route) => pathname.startsWith(route))) {
+  if (session && authPrefixes.some((p) => pathname.startsWith(p))) {
     const url = request.nextUrl.clone();
     url.pathname = "/dashboard";
     return NextResponse.redirect(url);
@@ -63,6 +74,6 @@ export async function proxy(request: NextRequest) {
 
 export const config = {
   matcher: [
-    "/((?!_next/static|_next/image|favicon.ico|api|.*\\.(?:svg|png|jpg|jpeg|gif|webp)$).*)",
+    "/((?!_next/static|_next/image|favicon.ico|api|auth|.*\\.(?:svg|png|jpg|jpeg|gif|webp)$).*)",
   ],
 };

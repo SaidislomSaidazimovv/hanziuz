@@ -19,7 +19,9 @@ import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
 import { cn } from "@/lib/utils";
 import HanziStroke from "./HanziStroke";
-import type { Lesson, VocabWord } from "@/lib/seed-data";
+import type { DbLesson, DbVocab } from "@/lib/db";
+import { useUser } from "@/lib/user-context";
+import { completeLesson } from "@/lib/db";
 import Link from "next/link";
 
 const steps = [
@@ -30,11 +32,12 @@ const steps = [
 ];
 
 interface LessonContentProps {
-  lesson: Lesson;
-  vocab: VocabWord[];
+  lesson: DbLesson;
+  vocab: DbVocab[];
 }
 
 export default function LessonContent({ lesson, vocab }: LessonContentProps) {
+  const { id: userId } = useUser();
   const [currentStep, setCurrentStep] = useState(0);
   const [completedSteps, setCompletedSteps] = useState<number[]>([]);
   const [currentWordIdx, setCurrentWordIdx] = useState(0);
@@ -136,7 +139,7 @@ export default function LessonContent({ lesson, vocab }: LessonContentProps) {
 
   const handleQuizAnswer = (answer: string) => {
     setQuizAnswer(answer);
-    if (answer === currentWord.meaningUz) {
+    if (answer === currentWord.meaning_uz) {
       setQuizScore((s) => s + 1);
     }
     setTimeout(() => {
@@ -148,6 +151,10 @@ export default function LessonContent({ lesson, vocab }: LessonContentProps) {
           prev.includes(3) ? prev : [...prev, 3]
         );
         setQuizDone(true);
+        // Save to Supabase
+        if (userId) {
+          completeLesson(userId, lesson.id, quizScore, lesson.xp_reward);
+        }
       }
     }, 1000);
   };
@@ -159,8 +166,8 @@ export default function LessonContent({ lesson, vocab }: LessonContentProps) {
       .filter((w) => w.id !== currentWord.id)
       .sort(() => Math.random() - 0.5)
       .slice(0, 3)
-      .map((w) => w.meaningUz);
-    return [...others, currentWord.meaningUz].sort(() => Math.random() - 0.5);
+      .map((w) => w.meaning_uz);
+    return [...others, currentWord.meaning_uz].sort(() => Math.random() - 0.5);
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [currentStep, currentWordIdx]);
 
@@ -177,13 +184,13 @@ export default function LessonContent({ lesson, vocab }: LessonContentProps) {
       <div>
         <div className="flex items-center gap-2 text-sm text-muted-foreground mb-1">
           <span className="px-2 py-0.5 bg-primary/10 text-primary text-xs font-medium rounded-md">
-            HSK {lesson.hskLevel}
+            HSK {lesson.hsk_level}
           </span>
-          <span>Dars {lesson.orderNum}</span>
+          <span>Dars {lesson.order_num}</span>
         </div>
-        <h1 className="text-xl sm:text-2xl font-bold">{lesson.titleUz}</h1>
+        <h1 className="text-xl sm:text-2xl font-bold">{lesson.title_uz}</h1>
         <p className="text-sm text-muted-foreground mt-1">
-          {lesson.descriptionUz}
+          {lesson.description_uz}
         </p>
       </div>
 
@@ -256,16 +263,16 @@ export default function LessonContent({ lesson, vocab }: LessonContentProps) {
                     {currentWord.pinyin}
                   </p>
                   <p className="text-xl font-semibold">
-                    {currentWord.meaningUz}
+                    {currentWord.meaning_uz}
                   </p>
                   <p className="text-sm text-muted-foreground mt-1">
-                    {currentWord.meaningEn}
+                    {currentWord.meaning_en}
                   </p>
                 </div>
 
                 <button
                   onClick={() =>
-                    speak(currentWord.hanzi, currentWord.audioUrl)
+                    speak(currentWord.hanzi, currentWord.audio_url ?? undefined)
                   }
                   disabled={isSpeaking}
                   className={cn(
@@ -283,13 +290,13 @@ export default function LessonContent({ lesson, vocab }: LessonContentProps) {
                   {isSpeaking ? "Ijro etilmoqda..." : "Tinglash"}
                 </button>
 
-                {currentWord.exampleZh && (
+                {currentWord.example_sentence_zh && (
                   <div className="mt-6 p-4 rounded-xl bg-secondary/50 text-left">
                     <p className="font-chinese text-base">
-                      {currentWord.exampleZh}
+                      {currentWord.example_sentence_zh}
                     </p>
                     <p className="text-sm text-muted-foreground mt-1">
-                      {currentWord.exampleUz}
+                      {currentWord.example_sentence_uz}
                     </p>
                   </div>
                 )}
@@ -331,12 +338,12 @@ export default function LessonContent({ lesson, vocab }: LessonContentProps) {
                   {currentWord.pinyin}
                 </p>
                 <p className="text-lg font-semibold">
-                  {currentWord.meaningUz}
+                  {currentWord.meaning_uz}
                 </p>
 
                 <button
                   onClick={() =>
-                    speak(currentWord.hanzi, currentWord.audioUrl)
+                    speak(currentWord.hanzi, currentWord.audio_url ?? undefined)
                   }
                   disabled={isSpeaking}
                   className={cn(
@@ -411,10 +418,10 @@ export default function LessonContent({ lesson, vocab }: LessonContentProps) {
                         {currentWord.pinyin}
                       </p>
                       <p className="text-2xl font-bold">
-                        {currentWord.meaningUz}
+                        {currentWord.meaning_uz}
                       </p>
                       <p className="text-sm text-muted-foreground mt-1">
-                        {currentWord.meaningEn}
+                        {currentWord.meaning_en}
                       </p>
                     </div>
                   )}
@@ -465,7 +472,7 @@ export default function LessonContent({ lesson, vocab }: LessonContentProps) {
 
               <div className="grid grid-cols-2 gap-3 max-w-md mx-auto">
                 {quizOptions.map((opt) => {
-                  const isCorrect = opt === currentWord.meaningUz;
+                  const isCorrect = opt === currentWord.meaning_uz;
                   const isSelected = quizAnswer === opt;
                   return (
                     <button
@@ -511,7 +518,7 @@ export default function LessonContent({ lesson, vocab }: LessonContentProps) {
                 {Math.round((quizScore / vocab.length) * 100)}%)
               </p>
               <p className="text-sm text-primary font-medium">
-                +{lesson.xpReward} XP qo&apos;shildi
+                +{lesson.xp_reward} XP qo&apos;shildi
               </p>
               <div className="flex gap-3 justify-center pt-2">
                 <Button

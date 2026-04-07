@@ -1,11 +1,12 @@
 "use client";
 
-import { useState, useMemo } from "react";
-import { Search, BookOpen, Filter } from "lucide-react";
+import { useState, useMemo, useEffect } from "react";
+import { Search, BookOpen, Filter, Loader2 } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
-import { lessons, mockProgress } from "@/lib/seed-data";
+import { useUser } from "@/lib/user-context";
+import { getLessons, getUserProgress, type DbLesson, type DbProgress } from "@/lib/db";
 import LessonCard from "@/components/lessons/LessonCard";
 
 const hskLevels = [
@@ -19,45 +20,62 @@ const hskLevels = [
 ];
 
 export default function LessonsClient() {
+  const { id: userId } = useUser();
   const [activeLevel, setActiveLevel] = useState(0);
   const [searchQuery, setSearchQuery] = useState("");
+  const [lessons, setLessons] = useState<DbLesson[]>([]);
+  const [progress, setProgress] = useState<DbProgress[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    getLessons().then((data) => {
+      setLessons(data);
+      setLoading(false);
+    });
+  }, []);
+
+  useEffect(() => {
+    if (!userId) return;
+    getUserProgress(userId).then(setProgress);
+  }, [userId]);
 
   const filteredLessons = useMemo(() => {
     let result = lessons;
-
     if (activeLevel > 0) {
-      result = result.filter((l) => l.hskLevel === activeLevel);
+      result = result.filter((l) => l.hsk_level === activeLevel);
     }
-
     if (searchQuery.trim()) {
       const q = searchQuery.toLowerCase();
       result = result.filter(
         (l) =>
-          l.titleUz.toLowerCase().includes(q) ||
-          l.titleZh.includes(q) ||
-          l.hanziPreview.includes(q) ||
-          l.descriptionUz.toLowerCase().includes(q)
+          l.title_uz.toLowerCase().includes(q) ||
+          (l.title_zh && l.title_zh.includes(q)) ||
+          (l.description_uz && l.description_uz.toLowerCase().includes(q))
       );
     }
-
     return result;
-  }, [activeLevel, searchQuery]);
+  }, [activeLevel, searchQuery, lessons]);
 
   const levelCounts = useMemo(() => {
     const counts: Record<number, number> = { 0: lessons.length };
     lessons.forEach((l) => {
-      counts[l.hskLevel] = (counts[l.hskLevel] || 0) + 1;
+      counts[l.hsk_level] = (counts[l.hsk_level] || 0) + 1;
     });
     return counts;
-  }, []);
+  }, [lessons]);
 
-  const completedCount = mockProgress.filter(
-    (p) => p.status === "completed"
-  ).length;
+  const completedCount = progress.filter((p) => p.status === "completed").length;
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center py-20">
+        <Loader2 className="w-6 h-6 animate-spin text-muted-foreground" />
+      </div>
+    );
+  }
 
   return (
     <div className="max-w-4xl mx-auto space-y-6">
-      {/* Header */}
       <div>
         <div className="flex items-center gap-3 mb-1">
           <BookOpen className="w-6 h-6 text-primary" />
@@ -68,7 +86,6 @@ export default function LessonsClient() {
         </p>
       </div>
 
-      {/* Search */}
       <div className="relative">
         <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
         <Input
@@ -79,7 +96,6 @@ export default function LessonsClient() {
         />
       </div>
 
-      {/* HSK Level Tabs */}
       <div className="flex items-center gap-2 overflow-x-auto pb-1 scrollbar-none">
         <Filter className="w-4 h-4 text-muted-foreground shrink-0" />
         {hskLevels.map((tab) => (
@@ -111,17 +127,19 @@ export default function LessonsClient() {
         ))}
       </div>
 
-      {/* Lesson list */}
       {filteredLessons.length > 0 ? (
         <div className="grid gap-3">
-          {filteredLessons.map((lesson, i) => (
-            <LessonCard
-              key={lesson.id}
-              lesson={lesson}
-              progress={mockProgress.find((p) => p.lessonId === lesson.id)}
-              index={i}
-            />
-          ))}
+          {filteredLessons.map((lesson, i) => {
+            const prog = progress.find((p) => p.lesson_id === lesson.id);
+            return (
+              <LessonCard
+                key={lesson.id}
+                lesson={lesson}
+                progress={prog}
+                index={i}
+              />
+            );
+          })}
         </div>
       ) : (
         <div className="text-center py-16">

@@ -3,10 +3,10 @@
 import { useState, useCallback } from "react";
 import { motion } from "framer-motion";
 import { Volume2, Loader2, RotateCcw } from "lucide-react";
-import type { VocabWord } from "@/lib/seed-data";
+import type { DbVocab } from "@/lib/db";
 
 interface FlashCardProps {
-  word: VocabWord;
+  word: DbVocab;
   onFlip?: (flipped: boolean) => void;
 }
 
@@ -103,14 +103,14 @@ export default function FlashCard({ word, onFlip }: FlashCardProps) {
             {word.hanzi}
           </span>
           <p className="pinyin text-xl text-primary mb-3">{word.pinyin}</p>
-          <p className="text-3xl font-bold mb-1">{word.meaningUz}</p>
-          <p className="text-sm text-muted-foreground">{word.meaningEn}</p>
+          <p className="text-3xl font-bold mb-1">{word.meaning_uz}</p>
+          <p className="text-sm text-muted-foreground">{word.meaning_en}</p>
 
-          {word.exampleZh && (
+          {word.example_sentence_zh && (
             <div className="mt-6 p-3 rounded-xl bg-secondary/50 text-left w-full">
-              <p className="font-chinese text-sm">{word.exampleZh}</p>
+              <p className="font-chinese text-sm">{word.example_sentence_zh}</p>
               <p className="text-xs text-muted-foreground mt-1">
-                {word.exampleUz}
+                {word.example_sentence_uz}
               </p>
             </div>
           )}

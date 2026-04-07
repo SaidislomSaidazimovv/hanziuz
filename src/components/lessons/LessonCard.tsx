@@ -5,19 +5,21 @@ import { motion } from "framer-motion";
 import { Lock, CheckCircle2, Play } from "lucide-react";
 import { Progress } from "@/components/ui/progress";
 import { cn } from "@/lib/utils";
-import type { Lesson, UserLessonProgress } from "@/lib/seed-data";
+import type { DbLesson, DbProgress } from "@/lib/db";
 
 interface LessonCardProps {
-  lesson: Lesson;
-  progress?: UserLessonProgress;
+  lesson: DbLesson;
+  progress?: DbProgress;
   index: number;
 }
 
 export default function LessonCard({ lesson, progress, index }: LessonCardProps) {
-  const isLocked = !lesson.isFree && (!progress || progress.status === "not_started");
+  const isLocked = !lesson.is_free && (!progress || progress.status === "not_started");
   const isCompleted = progress?.status === "completed";
   const isInProgress = progress?.status === "in_progress";
-  const progressValue = progress?.progress ?? 0;
+  const progressValue = isCompleted ? 100 : isInProgress ? 50 : 0;
+
+  const hanziPreview = lesson.title_zh?.slice(0, 2) || "学";
 
   return (
     <motion.div
@@ -37,7 +39,6 @@ export default function LessonCard({ lesson, progress, index }: LessonCardProps)
         onClick={(e) => isLocked && e.preventDefault()}
       >
         <div className="flex items-start gap-4">
-          {/* Hanzi preview */}
           <div
             className={cn(
               "w-16 h-16 rounded-xl flex items-center justify-center shrink-0 transition-colors",
@@ -54,18 +55,17 @@ export default function LessonCard({ lesson, progress, index }: LessonCardProps)
               <Lock className="w-6 h-6 text-muted-foreground" />
             ) : (
               <span className="hanzi-display text-2xl text-foreground group-hover:text-primary transition-colors">
-                {lesson.hanziPreview}
+                {hanziPreview}
               </span>
             )}
           </div>
 
-          {/* Content */}
           <div className="flex-1 min-w-0">
             <div className="flex items-center gap-2 mb-1">
               <span className="text-xs font-medium text-muted-foreground">
-                Dars {lesson.orderNum}
+                Dars {lesson.order_num}
               </span>
-              {!lesson.isFree && (
+              {!lesson.is_free && (
                 <span className="px-1.5 py-0.5 bg-accent/10 text-accent text-[10px] font-semibold rounded">
                   PREMIUM
                 </span>
@@ -75,12 +75,11 @@ export default function LessonCard({ lesson, progress, index }: LessonCardProps)
               )}
             </div>
 
-            <h3 className="font-semibold text-sm truncate">{lesson.titleUz}</h3>
+            <h3 className="font-semibold text-sm truncate">{lesson.title_uz}</h3>
             <p className="text-xs text-muted-foreground mt-0.5 truncate">
-              {lesson.titleZh} · +{lesson.xpReward} XP
+              {lesson.title_zh} · +{lesson.xp_reward} XP
             </p>
 
-            {/* Progress bar */}
             {(isInProgress || isCompleted) && (
               <div className="flex items-center gap-2 mt-2.5">
                 <Progress
@@ -97,7 +96,6 @@ export default function LessonCard({ lesson, progress, index }: LessonCardProps)
             )}
           </div>
 
-          {/* Play icon on hover */}
           {!isLocked && (
             <div className="hidden group-hover:flex w-9 h-9 rounded-xl bg-primary/10 items-center justify-center shrink-0 self-center">
               <Play className="w-4 h-4 text-primary" />

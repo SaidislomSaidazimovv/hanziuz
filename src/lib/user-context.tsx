@@ -4,48 +4,66 @@ import { createContext, useContext, useEffect, useState } from "react";
 import { createClient } from "@/lib/supabase";
 
 interface UserData {
+  id: string;
   name: string;
   email: string;
   avatarUrl: string;
   initials: string;
+  isLoaded: boolean;
 }
 
 const UserContext = createContext<UserData>({
+  id: "",
   name: "",
   email: "",
   avatarUrl: "",
   initials: "U",
+  isLoaded: false,
 });
+
+function computeInitials(name: string, email: string): string {
+  if (name) {
+    return name
+      .split(" ")
+      .map((n: string) => n[0])
+      .join("")
+      .toUpperCase()
+      .slice(0, 2);
+  }
+  return email ? email[0].toUpperCase() : "U";
+}
 
 export function UserProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<UserData>({
+    id: "",
     name: "",
     email: "",
     avatarUrl: "",
     initials: "U",
+    isLoaded: false,
   });
 
   useEffect(() => {
     const supabase = createClient();
-    supabase.auth.getUser().then(({ data: { user: authUser } }) => {
-      if (authUser) {
-        const meta = authUser.user_metadata;
+
+    // Step 1: Read session from cookie (instant, no network)
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      if (session?.user) {
+        const meta = session.user.user_metadata;
         const name = meta?.full_name || meta?.name || "";
-        const email = authUser.email || "";
+        const email = session.user.email || "";
         const avatarUrl = meta?.avatar_url || meta?.picture || "";
 
-        const initials = name
-          ? name
-              .split(" ")
-              .map((n: string) => n[0])
-              .join("")
-              .toUpperCase()
-              .slice(0, 2)
-          : email
-            ? email[0].toUpperCase()
-            : "U";
-
-        setUser({ name, email, avatarUrl, initials });
+        setUser({
+          id: session.user.id,
+          name,
+          email,
+          avatarUrl,
+          initials: computeInitials(name, email),
+          isLoaded: true,
+        });
+      } else {
+        setUser((prev) => ({ ...prev, isLoaded: true }));
       }
     });
   }, []);

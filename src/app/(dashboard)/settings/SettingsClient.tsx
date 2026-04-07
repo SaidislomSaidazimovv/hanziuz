@@ -13,6 +13,7 @@ import {
   Mail,
 } from "lucide-react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { useUser } from "@/lib/user-context";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { createClient } from "@/lib/supabase";
@@ -29,20 +30,17 @@ export default function SettingsClient() {
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [avatarUrl, setAvatarUrl] = useState("");
+  const userData = useUser();
 
-  // Load user data
+  // Load user data from context
   useEffect(() => {
-    const supabase = createClient();
-    supabase.auth.getUser().then(({ data: { user } }) => {
-      if (user) {
-        const meta = user.user_metadata;
-        setName(meta?.full_name || meta?.name || "");
-        setEmail(user.email || "");
-        setAvatarUrl(meta?.avatar_url || meta?.picture || "");
-      }
+    if (userData.isLoaded) {
+      setName(userData.name);
+      setEmail(userData.email);
+      setAvatarUrl(userData.avatarUrl);
       setIsLoading(false);
-    });
-  }, []);
+    }
+  }, [userData.isLoaded, userData.name, userData.email, userData.avatarUrl]);
 
   const handleAvatarUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
