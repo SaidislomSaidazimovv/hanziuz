@@ -1,6 +1,7 @@
 "use client";
 
 import { motion } from "framer-motion";
+import { useUser } from "@/lib/user-context";
 import StreakCard from "@/components/dashboard/StreakCard";
 import XPProgressCard from "@/components/dashboard/XPProgressCard";
 import ContinueLearningCard from "@/components/dashboard/ContinueLearningCard";
@@ -20,6 +21,9 @@ const mockWeeklyData = [
 ];
 
 export default function DashboardClient() {
+  const { name } = useUser();
+  const userName = name.split(" ")[0] || "";
+
   return (
     <div className="max-w-6xl mx-auto space-y-6">
       {/* Greeting */}
@@ -29,7 +33,7 @@ export default function DashboardClient() {
         transition={{ duration: 0.4 }}
       >
         <h1 className="text-2xl sm:text-3xl font-bold">
-          Xush kelibsiz! 👋
+          Xush kelibsiz{userName ? `, ${userName}` : ""}! 👋
         </h1>
         <p className="text-muted-foreground mt-1">
           Bugun xitoy tilini o&apos;rganishni davom ettiramizmi?

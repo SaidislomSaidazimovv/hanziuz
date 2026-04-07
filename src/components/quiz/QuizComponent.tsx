@@ -113,8 +113,20 @@ export default function QuizComponent({
   >([]);
 
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const selectedAnswerRef = useRef(selectedAnswer);
+  selectedAnswerRef.current = selectedAnswer;
+
   const question = questions[currentIdx];
   const progressPct = (currentIdx / questions.length) * 100;
+
+  const advance = useCallback(() => {
+    if (currentIdx < questions.length - 1) {
+      setCurrentIdx((i) => i + 1);
+      setSelectedAnswer(null);
+    } else {
+      setQuizDone(true);
+    }
+  }, [currentIdx, questions.length]);
 
   // Timer
   useEffect(() => {
@@ -124,9 +136,26 @@ export default function QuizComponent({
     timerRef.current = setInterval(() => {
       setTimeLeft((prev) => {
         if (prev <= 1) {
-          // Time's up — treat as wrong
           clearInterval(timerRef.current!);
-          handleTimeout();
+          // Inline timeout logic — uses refs to avoid stale closure
+          if (!selectedAnswerRef.current) {
+            setSelectedAnswer("__timeout__");
+            setStreak(0);
+            setResults((r) => [
+              ...r,
+              { word: questions[currentIdx].word, correct: false },
+            ]);
+            setTimeout(() => {
+              setCurrentIdx((i) => {
+                if (i < questions.length - 1) {
+                  setSelectedAnswer(null);
+                  return i + 1;
+                }
+                setQuizDone(true);
+                return i;
+              });
+            }, 1500);
+          }
           return 0;
         }
         return prev - 1;
@@ -136,29 +165,7 @@ export default function QuizComponent({
     return () => {
       if (timerRef.current) clearInterval(timerRef.current);
     };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [currentIdx, quizDone]);
-
-  const handleTimeout = useCallback(() => {
-    if (selectedAnswer) return;
-    setSelectedAnswer("__timeout__");
-    setStreak(0);
-    setResults((prev) => [
-      ...prev,
-      { word: question.word, correct: false },
-    ]);
-    setTimeout(() => advance(), 1500);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [currentIdx, selectedAnswer]);
-
-  const advance = () => {
-    if (currentIdx < questions.length - 1) {
-      setCurrentIdx((i) => i + 1);
-      setSelectedAnswer(null);
-    } else {
-      setQuizDone(true);
-    }
-  };
+  }, [currentIdx, quizDone, selectedAnswer, questions]);
 
   const handleAnswer = (answer: string) => {
     if (selectedAnswer) return;

@@ -5,18 +5,18 @@ const footerLinks = {
   Platforma: [
     { label: "Darslar", href: "/lessons" },
     { label: "Kartochkalar", href: "/flashcards" },
-    { label: "AI Repetitor", href: "/dashboard" },
+    { label: "AI Repetitor", href: "/ai-tutor" },
     { label: "Narxlar", href: "#pricing" },
   ],
-  "Resurslar": [
-    { label: "HSK haqida", href: "#" },
-    { label: "Blog", href: "#" },
-    { label: "Yo'riqnoma", href: "#" },
+  Resurslar: [
+    { label: "HSK haqida", href: "/hsk-guide" },
+    { label: "Blog", href: "/blog" },
+    { label: "Yo'riqnoma", href: "/guide" },
   ],
   Kompaniya: [
-    { label: "Biz haqimizda", href: "#" },
-    { label: "Aloqa", href: "#" },
-    { label: "Maxfiylik siyosati", href: "#" },
+    { label: "Biz haqimizda", href: "/about" },
+    { label: "Aloqa", href: "/contact" },
+    { label: "Maxfiylik siyosati", href: "/privacy" },
   ],
 };
 
