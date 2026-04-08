@@ -11,10 +11,12 @@ interface LessonCardProps {
   lesson: DbLesson;
   progress?: DbProgress;
   index: number;
+  hasAccess?: boolean;
+  onPremiumClick?: () => void;
 }
 
-export default function LessonCard({ lesson, progress, index }: LessonCardProps) {
-  const isLocked = !lesson.is_free && (!progress || progress.status === "not_started");
+export default function LessonCard({ lesson, progress, index, hasAccess = true, onPremiumClick }: LessonCardProps) {
+  const isLocked = !hasAccess;
   const isCompleted = progress?.status === "completed";
   const isInProgress = progress?.status === "in_progress";
   const progressValue = isCompleted ? 100 : isInProgress ? 50 : 0;
@@ -33,10 +35,15 @@ export default function LessonCard({ lesson, progress, index }: LessonCardProps)
         className={cn(
           "group block rounded-2xl border bg-card p-5 transition-all duration-300",
           isLocked
-            ? "opacity-60 cursor-not-allowed"
+            ? "opacity-70 cursor-pointer hover:border-accent/30"
             : "hover:shadow-lg hover:border-primary/30"
         )}
-        onClick={(e) => isLocked && e.preventDefault()}
+        onClick={(e) => {
+          if (isLocked) {
+            e.preventDefault();
+            onPremiumClick?.();
+          }
+        }}
       >
         <div className="flex items-start gap-4">
           <div

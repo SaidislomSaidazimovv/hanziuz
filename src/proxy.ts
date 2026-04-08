@@ -8,10 +8,12 @@ const protectedPrefixes = [
   "/quiz",
   "/ai-tutor",
   "/progress",
+  "/achievements",
+  "/leaderboard",
   "/settings",
 ];
 
-const authPrefixes = ["/login", "/register"];
+const authPrefixes = ["/login", "/register", "/forgot-password", "/reset-password"];
 
 export async function proxy(request: NextRequest) {
   const pathname = request.nextUrl.pathname;

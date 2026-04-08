@@ -95,34 +95,20 @@ export default function ProgressClient() {
     const supabase = createClient();
 
     async function fetchData() {
-      // Fetch profile
-      const { data: profile } = await supabase
-        .from("profiles")
-        .select("*")
-        .eq("id", userId)
-        .single();
-
-      // Fetch lessons
-      const { data: allLessons } = await supabase
-        .from("lessons")
-        .select("id, hsk_level");
-
-      // Fetch user progress
-      const { data: userProgress } = await supabase
-        .from("user_lesson_progress")
-        .select("*")
-        .eq("user_id", userId);
-
-      // Fetch vocabulary count per HSK level
-      const { data: vocabData } = await supabase
-        .from("vocabulary")
-        .select("id, hsk_level");
-
-      // Fetch SRS reviews (cards reviewed)
-      const { data: srsData } = await supabase
-        .from("srs_reviews")
-        .select("id, last_reviewed_at")
-        .eq("user_id", userId);
+      // Parallel fetch — all 5 queries at once
+      const [
+        { data: profile },
+        { data: allLessons },
+        { data: userProgress },
+        { data: vocabData },
+        { data: srsData },
+      ] = await Promise.all([
+        supabase.from("profiles").select("*").eq("id", userId).single(),
+        supabase.from("lessons").select("id, hsk_level"),
+        supabase.from("user_lesson_progress").select("*").eq("user_id", userId),
+        supabase.from("vocabulary").select("id, hsk_level"),
+        supabase.from("srs_reviews").select("id, last_reviewed_at").eq("user_id", userId),
+      ]);
 
       const completedProgress = (userProgress || []).filter(
         (p: { status: string }) => p.status === "completed"

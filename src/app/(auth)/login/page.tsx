@@ -203,7 +203,7 @@ function LoginForm() {
               </div>
               <div className="flex justify-end mt-1.5">
                 <Link
-                  href="#"
+                  href="/forgot-password"
                   className="text-xs text-primary hover:underline"
                 >
                   Parolni unutdingizmi?

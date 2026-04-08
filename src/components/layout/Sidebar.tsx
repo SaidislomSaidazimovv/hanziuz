@@ -12,6 +12,8 @@ import {
   BarChart3,
   Bot,
   Crown,
+  Trophy,
+  Medal,
   ChevronLeft,
   ChevronRight,
 } from "lucide-react";
@@ -47,6 +49,16 @@ const navItems = [
     label: "Natijalar",
     href: "/progress",
     icon: BarChart3,
+  },
+  {
+    label: "Yutuqlar",
+    href: "/achievements",
+    icon: Trophy,
+  },
+  {
+    label: "Reyting",
+    href: "/leaderboard",
+    icon: Medal,
   },
 ];
 

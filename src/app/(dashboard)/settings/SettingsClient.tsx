@@ -11,6 +11,9 @@ import {
   CheckCircle2,
   User,
   Mail,
+  Lock,
+  Eye,
+  EyeOff,
 } from "lucide-react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { useUser } from "@/lib/user-context";
@@ -286,6 +289,198 @@ export default function SettingsClient() {
           )}
         </Button>
       </div>
+
+      {/* Password change */}
+      <PasswordChangeSection />
+    </div>
+  );
+}
+
+function PasswordChangeSection() {
+  const [currentPassword, setCurrentPassword] = useState("");
+  const [newPassword, setNewPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
+  const [showCurrent, setShowCurrent] = useState(false);
+  const [showNew, setShowNew] = useState(false);
+  const [showConfirm, setShowConfirm] = useState(false);
+  const [isChanging, setIsChanging] = useState(false);
+  const [pwSuccess, setPwSuccess] = useState(false);
+  const [pwError, setPwError] = useState<string | null>(null);
+
+  const validate = (): string | null => {
+    if (!currentPassword) return "Joriy parolni kiriting";
+    if (newPassword.length < 8) return "Yangi parol kamida 8 ta belgidan iborat bo'lishi kerak";
+    if (newPassword !== confirmPassword) return "Yangi parollar mos kelmaydi";
+    if (currentPassword === newPassword) return "Yangi parol joriy paroldan farqli bo'lishi kerak";
+    return null;
+  };
+
+  const handleChangePassword = async () => {
+    const validationError = validate();
+    if (validationError) {
+      setPwError(validationError);
+      return;
+    }
+
+    setIsChanging(true);
+    setPwError(null);
+    setPwSuccess(false);
+
+    try {
+      const supabase = createClient();
+
+      // Verify current password by re-authenticating
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user?.email) throw new Error("Foydalanuvchi topilmadi");
+
+      const { error: signInError } = await supabase.auth.signInWithPassword({
+        email: user.email,
+        password: currentPassword,
+      });
+
+      if (signInError) {
+        setPwError("Joriy parol noto'g'ri");
+        setIsChanging(false);
+        return;
+      }
+
+      // Update to new password
+      const { error: updateError } = await supabase.auth.updateUser({
+        password: newPassword,
+      });
+
+      if (updateError) {
+        setPwError(updateError.message);
+        setIsChanging(false);
+        return;
+      }
+
+      setPwSuccess(true);
+      setCurrentPassword("");
+      setNewPassword("");
+      setConfirmPassword("");
+      setTimeout(() => setPwSuccess(false), 5000);
+    } catch (err) {
+      setPwError(
+        err instanceof Error ? err.message : "Parolni o'zgartirishda xatolik"
+      );
+    } finally {
+      setIsChanging(false);
+    }
+  };
+
+  return (
+    <div className="rounded-2xl border bg-card p-6 space-y-5">
+      <h2 className="font-semibold flex items-center gap-2">
+        <Lock className="w-4 h-4 text-muted-foreground" />
+        Parolni o&apos;zgartirish
+      </h2>
+
+      {pwSuccess && (
+        <div className="p-3 rounded-xl bg-green-500/10 border border-green-500/20 text-sm text-green-600 flex items-center gap-2">
+          <CheckCircle2 className="w-4 h-4" />
+          Parol muvaffaqiyatli o&apos;zgartirildi
+        </div>
+      )}
+
+      {pwError && (
+        <div className="p-3 rounded-xl bg-red-500/10 border border-red-500/20 text-sm text-red-600">
+          {pwError}
+        </div>
+      )}
+
+      <div>
+        <label htmlFor="current-pw" className="block text-sm font-medium mb-1.5">
+          Joriy parol
+        </label>
+        <div className="relative">
+          <Input
+            id="current-pw"
+            type={showCurrent ? "text" : "password"}
+            value={currentPassword}
+            onChange={(e) => { setCurrentPassword(e.target.value); setPwError(null); }}
+            placeholder="Joriy parolingiz"
+            className="rounded-xl h-11 pr-10"
+          />
+          <button
+            type="button"
+            onClick={() => setShowCurrent(!showCurrent)}
+            className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors"
+          >
+            {showCurrent ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+          </button>
+        </div>
+      </div>
+
+      <div>
+        <label htmlFor="new-pw" className="block text-sm font-medium mb-1.5">
+          Yangi parol
+        </label>
+        <div className="relative">
+          <Input
+            id="new-pw"
+            type={showNew ? "text" : "password"}
+            value={newPassword}
+            onChange={(e) => { setNewPassword(e.target.value); setPwError(null); }}
+            placeholder="Kamida 8 ta belgi"
+            className="rounded-xl h-11 pr-10"
+          />
+          <button
+            type="button"
+            onClick={() => setShowNew(!showNew)}
+            className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors"
+          >
+            {showNew ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+          </button>
+        </div>
+        {newPassword.length > 0 && newPassword.length < 8 && (
+          <p className="text-[11px] text-red-500 mt-1">Kamida 8 ta belgi kerak</p>
+        )}
+      </div>
+
+      <div>
+        <label htmlFor="confirm-pw" className="block text-sm font-medium mb-1.5">
+          Yangi parolni tasdiqlang
+        </label>
+        <div className="relative">
+          <Input
+            id="confirm-pw"
+            type={showConfirm ? "text" : "password"}
+            value={confirmPassword}
+            onChange={(e) => { setConfirmPassword(e.target.value); setPwError(null); }}
+            placeholder="Yangi parolni qaytadan kiriting"
+            className="rounded-xl h-11 pr-10"
+          />
+          <button
+            type="button"
+            onClick={() => setShowConfirm(!showConfirm)}
+            className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors"
+          >
+            {showConfirm ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+          </button>
+        </div>
+        {confirmPassword.length > 0 && newPassword !== confirmPassword && (
+          <p className="text-[11px] text-red-500 mt-1">Parollar mos kelmaydi</p>
+        )}
+      </div>
+
+      <Button
+        onClick={handleChangePassword}
+        disabled={isChanging}
+        className="bg-primary hover:bg-primary/90 text-primary-foreground rounded-xl"
+      >
+        {isChanging ? (
+          <>
+            <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+            O&apos;zgartirilmoqda...
+          </>
+        ) : (
+          <>
+            <Lock className="w-4 h-4 mr-2" />
+            Parolni yangilash
+          </>
+        )}
+      </Button>
     </div>
   );
 }

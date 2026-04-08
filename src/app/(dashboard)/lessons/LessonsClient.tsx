@@ -8,6 +8,7 @@ import { cn } from "@/lib/utils";
 import { useUser } from "@/lib/user-context";
 import { getLessons, getUserProgress, type DbLesson, type DbProgress } from "@/lib/db";
 import LessonCard from "@/components/lessons/LessonCard";
+import PremiumModal from "@/components/premium/PremiumModal";
 
 const hskLevels = [
   { level: 0, label: "Barchasi" },
@@ -20,12 +21,13 @@ const hskLevels = [
 ];
 
 export default function LessonsClient() {
-  const { id: userId } = useUser();
+  const { id: userId, isPremium } = useUser();
   const [activeLevel, setActiveLevel] = useState(0);
   const [searchQuery, setSearchQuery] = useState("");
   const [lessons, setLessons] = useState<DbLesson[]>([]);
   const [progress, setProgress] = useState<DbProgress[]>([]);
   const [loading, setLoading] = useState(true);
+  const [premiumModalOpen, setPremiumModalOpen] = useState(false);
 
   useEffect(() => {
     getLessons().then((data) => {
@@ -137,6 +139,8 @@ export default function LessonsClient() {
                 lesson={lesson}
                 progress={prog}
                 index={i}
+                hasAccess={lesson.is_free || isPremium}
+                onPremiumClick={() => setPremiumModalOpen(true)}
               />
             );
           })}
@@ -150,6 +154,11 @@ export default function LessonsClient() {
           </p>
         </div>
       )}
+
+      <PremiumModal
+        isOpen={premiumModalOpen}
+        onClose={() => setPremiumModalOpen(false)}
+      />
     </div>
   );
 }
