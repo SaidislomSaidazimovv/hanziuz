@@ -20,11 +20,14 @@ export default function RegisterPage() {
   const handleGoogleSignup = async () => {
     setIsGoogleLoading(true);
     setError(null);
+    document.cookie = `auth_next=${encodeURIComponent(
+      "/dashboard"
+    )}; path=/; max-age=300; SameSite=Lax`;
     const supabase = createClient();
     const { error } = await supabase.auth.signInWithOAuth({
       provider: "google",
       options: {
-        redirectTo: `${window.location.origin}/auth/callback?next=/dashboard`,
+        redirectTo: `${window.location.origin}/auth/callback`,
       },
     });
     if (error) {

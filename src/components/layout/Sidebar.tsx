@@ -149,7 +149,7 @@ export default function Sidebar() {
               Barcha darslarga kirish va cheksiz AI repetitor
             </p>
             <Link
-              href="#"
+              href="/pricing"
               className="block text-center text-xs font-medium bg-primary text-primary-foreground rounded-lg py-2 hover:bg-primary/90 transition-colors"
             >
               Yangilash

@@ -5,10 +5,15 @@ import { NextResponse } from "next/server";
 export async function GET(request: Request) {
   const { searchParams, origin } = new URL(request.url);
   const code = searchParams.get("code");
-  const next = searchParams.get("next") ?? "/dashboard";
+
+  const cookieStore = await cookies();
+  const nextFromCookie = cookieStore.get("auth_next")?.value;
+  const next = nextFromCookie
+    ? decodeURIComponent(nextFromCookie)
+    : searchParams.get("next") ?? "/dashboard";
+  cookieStore.delete("auth_next");
 
   if (code) {
-    const cookieStore = await cookies();
 
     const supabase = createServerClient(
       process.env.NEXT_PUBLIC_SUPABASE_URL!,

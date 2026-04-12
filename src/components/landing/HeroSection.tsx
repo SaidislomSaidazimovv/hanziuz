@@ -66,7 +66,7 @@ export default function HeroSection() {
             variant="outline"
             size="lg"
             className="text-lg px-8 py-6 rounded-2xl"
-            render={<Link href="#features" />}
+            render={<Link href="/#features" />}
           >
             Batafsil
           </Button>

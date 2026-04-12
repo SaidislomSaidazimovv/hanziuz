@@ -1,3 +1,6 @@
+import { createServerSupabaseClient } from "@/lib/supabase-server";
+import { rateLimit, getIP } from "@/lib/rate-limit";
+
 const GROQ_API_URL = "https://api.groq.com/openai/v1/chat/completions";
 
 const SYSTEM_PROMPT = `Sen xitoy tili o'qituvchisisan. Sening ismingiz "HanziUz AI Repetitor".
@@ -24,6 +27,68 @@ Foydalanuvchiga xitoy tilini o'rganishda yordam ber, savollarga javob ber, va ma
 
 export async function POST(request: Request) {
   try {
+    const ip = getIP(request);
+    const { success: rlOk } = rateLimit(ip, {
+      limit: 30,
+      windowMs: 60_000,
+    });
+    if (!rlOk) {
+      return Response.json(
+        { error: "Juda ko'p so'rov. Biroz kuting." },
+        { status: 429 }
+      );
+    }
+
+    const supabase = await createServerSupabaseClient();
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
+
+    if (!user) {
+      return Response.json({ error: "Tizimga kiring" }, { status: 401 });
+    }
+
+    const { data: profile } = await supabase
+      .from("profiles")
+      .select("is_premium, premium_expires_at")
+      .eq("id", user.id)
+      .single();
+
+    const isPremium =
+      profile?.is_premium &&
+      profile?.premium_expires_at &&
+      new Date(profile.premium_expires_at) > new Date();
+
+    if (!isPremium) {
+      const today = new Date().toISOString().split("T")[0];
+      const { data: sessions } = await supabase
+        .from("ai_chat_sessions")
+        .select("id")
+        .eq("user_id", user.id);
+
+      const sessionIds = (sessions ?? []).map((s: { id: string }) => s.id);
+      let todayCount = 0;
+      if (sessionIds.length > 0) {
+        const { count } = await supabase
+          .from("ai_chat_messages")
+          .select("id", { count: "exact", head: true })
+          .in("session_id", sessionIds)
+          .eq("role", "user")
+          .gte("created_at", `${today}T00:00:00Z`);
+        todayCount = count ?? 0;
+      }
+
+      if (todayCount >= 10) {
+        return Response.json(
+          {
+            error:
+              "Kunlik limit: 10 ta savol. Premium bilan cheksiz foydalaning.",
+          },
+          { status: 429 }
+        );
+      }
+    }
+
     const { messages, hskLevel } = await request.json();
 
     if (!messages || !Array.isArray(messages)) {

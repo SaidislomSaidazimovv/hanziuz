@@ -6,7 +6,7 @@ const footerLinks = {
     { label: "Darslar", href: "/lessons" },
     { label: "Kartochkalar", href: "/flashcards" },
     { label: "AI Repetitor", href: "/ai-tutor" },
-    { label: "Narxlar", href: "#pricing" },
+    { label: "Narxlar", href: "/#pricing" },
   ],
   Resurslar: [
     { label: "HSK haqida", href: "/hsk-guide" },

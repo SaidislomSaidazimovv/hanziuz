@@ -8,8 +8,9 @@ import { Button } from "@/components/ui/button";
 
 const navLinks = [
   { label: "Imkoniyatlar", href: "#features" },
-  { label: "Darslar", href: "#lessons" },
+  { label: "Darslar", href: "/lessons" },
   { label: "Narxlar", href: "#pricing" },
+  { label: "Savollar", href: "#faq" },
 ];
 
 export default function Navbar() {

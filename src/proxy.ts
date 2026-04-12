@@ -1,5 +1,6 @@
 import { createServerClient } from "@supabase/ssr";
 import { NextResponse, type NextRequest } from "next/server";
+import { ADMIN_COOKIE_NAME, isValidAdminCookie } from "@/lib/admin-auth";
 
 const protectedPrefixes = [
   "/dashboard",
@@ -17,6 +18,22 @@ const authPrefixes = ["/login", "/register", "/forgot-password", "/reset-passwor
 
 export async function proxy(request: NextRequest) {
   const pathname = request.nextUrl.pathname;
+
+  // /admin — separate cookie-based gate; excluded from user auth logic below
+  if (pathname.startsWith("/admin")) {
+    if (pathname === "/admin/login") {
+      return NextResponse.next({ request });
+    }
+    const cookie = request.cookies.get(ADMIN_COOKIE_NAME)?.value;
+    const ok = await isValidAdminCookie(cookie);
+    if (!ok) {
+      const url = request.nextUrl.clone();
+      url.pathname = "/admin/login";
+      url.search = "";
+      return NextResponse.redirect(url);
+    }
+    return NextResponse.next({ request });
+  }
 
   // Skip auth check entirely for public pages — no Supabase call needed
   const needsAuthCheck =

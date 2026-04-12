@@ -21,11 +21,17 @@ function LoginForm() {
   const handleGoogleLogin = async () => {
     setIsGoogleLoading(true);
     setError(null);
+    // Stash `next` in a cookie so the callback route can read it server-side.
+    // Keeping redirectTo query-string-free lets us match Supabase's exact
+    // Redirect URL allow-list entries without needing wildcards.
+    document.cookie = `auth_next=${encodeURIComponent(
+      redirect
+    )}; path=/; max-age=300; SameSite=Lax`;
     const supabase = createClient();
     const { error } = await supabase.auth.signInWithOAuth({
       provider: "google",
       options: {
-        redirectTo: `${window.location.origin}/auth/callback?next=${redirect}`,
+        redirectTo: `${window.location.origin}/auth/callback`,
       },
     });
     if (error) {

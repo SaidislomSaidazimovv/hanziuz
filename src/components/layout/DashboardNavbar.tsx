@@ -20,6 +20,7 @@ import {
   Brain,
   Bot,
   BarChart3,
+  Crown,
 } from "lucide-react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Input } from "@/components/ui/input";
@@ -39,13 +40,26 @@ const mobileNavItems = [
   { label: "Natijalar", href: "/progress", icon: BarChart3 },
 ];
 
+function PremiumCrown() {
+  return (
+    <span
+      className="relative inline-flex items-center justify-center shrink-0"
+      title="Premium"
+      aria-label="Premium"
+    >
+      <span className="absolute inset-0 rounded-full bg-amber-400/40 blur-[3px] animate-pulse" />
+      <Crown className="relative w-4 h-4 text-amber-500 drop-shadow-[0_0_3px_rgba(245,158,11,0.6)]" />
+    </span>
+  );
+}
+
 export default function DashboardNavbar() {
   const pathname = usePathname();
   const router = useRouter();
   const [isDark, setIsDark] = useState(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [userMenuOpen, setUserMenuOpen] = useState(false);
-  const { name: userName, email: userEmail, avatarUrl: userAvatar, initials } = useUser();
+  const { name: userName, email: userEmail, avatarUrl: userAvatar, initials, isPremium } = useUser();
   const userMenuRef = useRef<HTMLDivElement>(null);
 
   // Close dropdown on outside click
@@ -135,8 +149,11 @@ export default function DashboardNavbar() {
                   {initials}
                 </AvatarFallback>
               </Avatar>
-              <span className="hidden sm:block text-sm font-medium max-w-[120px] truncate">
-                {userName || userEmail?.split("@")[0] || "Foydalanuvchi"}
+              <span className="hidden sm:flex items-center gap-1.5 text-sm font-medium max-w-[160px]">
+                <span className="truncate">
+                  {userName || userEmail?.split("@")[0] || "Foydalanuvchi"}
+                </span>
+                {isPremium && <PremiumCrown />}
               </span>
             </button>
 
@@ -158,8 +175,11 @@ export default function DashboardNavbar() {
                       </AvatarFallback>
                     </Avatar>
                     <div className="min-w-0">
-                      <p className="text-sm font-semibold truncate">
-                        {userName || "Foydalanuvchi"}
+                      <p className="text-sm font-semibold truncate flex items-center gap-1.5">
+                        <span className="truncate">
+                          {userName || "Foydalanuvchi"}
+                        </span>
+                        {isPremium && <PremiumCrown />}
                       </p>
                       <p className="text-xs text-muted-foreground truncate">
                         {userEmail}

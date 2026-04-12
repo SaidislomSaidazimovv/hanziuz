@@ -1,7 +1,20 @@
 import { createClient } from "@supabase/supabase-js";
+import { rateLimit, getIP } from "@/lib/rate-limit";
 
 export async function POST(request: Request) {
   try {
+    const ip = getIP(request);
+    const { success: rlOk } = rateLimit(ip, {
+      limit: 3,
+      windowMs: 3_600_000,
+    });
+    if (!rlOk) {
+      return Response.json(
+        { error: "Juda ko'p xabar. 1 soatdan keyin urinib ko'ring." },
+        { status: 429 }
+      );
+    }
+
     const { name, email, subject, message } = await request.json();
 
     // Validate

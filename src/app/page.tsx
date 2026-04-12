@@ -3,6 +3,7 @@ import HeroSection from "@/components/landing/HeroSection";
 import FeaturesSection from "@/components/landing/FeaturesSection";
 import LessonPreviewSection from "@/components/landing/LessonPreviewSection";
 import PricingSection from "@/components/landing/PricingSection";
+import FaqSection from "@/components/landing/FaqSection";
 import Footer from "@/components/landing/Footer";
 
 export default function LandingPage() {
@@ -14,6 +15,7 @@ export default function LandingPage() {
         <FeaturesSection />
         <LessonPreviewSection />
         <PricingSection />
+        <FaqSection />
       </main>
       <Footer />
     </>
