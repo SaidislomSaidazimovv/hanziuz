@@ -177,7 +177,7 @@ export default function UsersClient({
               <th className="text-left px-4 py-3 font-medium">Ism</th>
               <th className="text-left px-4 py-3 font-medium">Email</th>
               <th className="text-left px-4 py-3 font-medium">
-                Ro'yxatdan o'tgan
+                Ro&apos;yxatdan o&apos;tgan
               </th>
               <th className="text-left px-4 py-3 font-medium">Status</th>
               <th className="text-left px-4 py-3 font-medium">Muddati</th>

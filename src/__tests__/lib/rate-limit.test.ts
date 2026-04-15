@@ -3,13 +3,11 @@
  */
 describe("rateLimit", () => {
   let rateLimit: typeof import("@/lib/rate-limit").rateLimit;
-  let getIP: typeof import("@/lib/rate-limit").getIP;
 
   beforeEach(() => {
     jest.isolateModules(() => {
       const mod = require("@/lib/rate-limit");
       rateLimit = mod.rateLimit;
-      getIP = mod.getIP;
     });
   });
 

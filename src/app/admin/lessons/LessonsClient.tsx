@@ -243,7 +243,7 @@ export default function LessonsClient({
                 </td>
               </tr>
             )}
-            {visible.map((l, idx) => {
+            {visible.map((l) => {
               const sameLevel = lessons.filter(
                 (x) => x.hsk_level === l.hsk_level
               );

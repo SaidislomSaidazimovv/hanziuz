@@ -14,7 +14,7 @@ interface SingleLessonClientProps {
 }
 
 export default function SingleLessonClient({ lessonId }: SingleLessonClientProps) {
-  const { id: userId, isPremium } = useUser();
+  const { isPremium } = useUser();
   const router = useRouter();
   const [lesson, setLesson] = useState<DbLesson | null>(null);
   const [vocab, setVocab] = useState<DbVocab[]>([]);

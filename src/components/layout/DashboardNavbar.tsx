@@ -7,7 +7,6 @@ import { motion, AnimatePresence } from "framer-motion";
 import {
   Moon,
   Sun,
-  Bell,
   Search,
   Menu,
   X,
@@ -149,7 +148,7 @@ export default function DashboardNavbar() {
                   {initials}
                 </AvatarFallback>
               </Avatar>
-              <span className="hidden sm:flex items-center gap-1.5 text-sm font-medium max-w-[160px]">
+              <span className="hidden sm:flex items-center gap-1.5 text-sm font-medium max-w-40">
                 <span className="truncate">
                   {userName || userEmail?.split("@")[0] || "Foydalanuvchi"}
                 </span>

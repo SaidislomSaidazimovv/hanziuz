@@ -181,9 +181,6 @@ export default function ProgressClient() {
         )
         .slice(0, 6)
         .map((p: { lesson_id: string; score: number | null; completed_at: string }) => {
-          const lesson = (allLessons || []).find(
-            (l: { id: string }) => l.id === p.lesson_id
-          );
           const timeAgo = getTimeAgo(new Date(p.completed_at));
           return {
             type: "lesson",

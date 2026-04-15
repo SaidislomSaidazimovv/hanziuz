@@ -1,5 +1,4 @@
 import { cookies } from "next/headers";
-import { redirect } from "next/navigation";
 import { ADMIN_COOKIE_NAME, isValidAdminCookie } from "@/lib/admin-auth";
 import AdminSidebar from "./AdminSidebar";
 

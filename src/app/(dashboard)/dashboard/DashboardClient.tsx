@@ -1,10 +1,20 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { motion } from "framer-motion";
 import { Loader2 } from "lucide-react";
 import { useUser } from "@/lib/user-context";
-import { getProfile, getLessons, getUserProgress, getDailyActivity, type DbProfile, type DbLesson, type DbProgress } from "@/lib/db";
+import { canAccessLesson } from "@/lib/premium";
+import {
+  getProfile,
+  getLessons,
+  getUserProgress,
+  getDailyActivity,
+  type DbProfile,
+  type DbLesson,
+  type DbProgress,
+} from "@/lib/db";
+import { Button } from "@/components/ui/button";
 import StreakCard from "@/components/dashboard/StreakCard";
 import XPProgressCard from "@/components/dashboard/XPProgressCard";
 import ContinueLearningCard from "@/components/dashboard/ContinueLearningCard";
@@ -22,6 +32,9 @@ const defaultWeeklyData = [
   { day: "sun", label: "Ya", xp: 0 },
 ];
 
+const dayLabels = ["Du", "Se", "Ch", "Pa", "Ju", "Sh", "Ya"];
+const dayKeys = ["mon", "tue", "wed", "thu", "fri", "sat", "sun"];
+
 export default function DashboardClient() {
   const { id: userId, name, isLoaded } = useUser();
   const userName = name.split(" ")[0] || "";
@@ -30,27 +43,32 @@ export default function DashboardClient() {
   const [lessons, setLessons] = useState<DbLesson[]>([]);
   const [progress, setProgress] = useState<DbProgress[]>([]);
   const [weeklyData, setWeeklyData] = useState(defaultWeeklyData);
+  const [todayXP, setTodayXP] = useState(0);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
-  useEffect(() => {
+  const fetchAll = useCallback(async () => {
     if (!userId) return;
-    Promise.all([
-      getProfile(userId),
-      getLessons(),
-      getUserProgress(userId),
-      getDailyActivity(userId, 7),
-    ]).then(([p, l, pr, daily]) => {
+    setError(null);
+    try {
+      const [p, l, pr, daily] = await Promise.all([
+        getProfile(userId),
+        getLessons(),
+        getUserProgress(userId),
+        getDailyActivity(userId, 7),
+      ]);
       setProfile(p);
       setLessons(l);
       setProgress(pr);
 
-      // Build weekly heatmap from daily_activity
-      const dayLabels = ["Du", "Se", "Ch", "Pa", "Ju", "Sh", "Ya"];
-      const dayKeys = ["mon", "tue", "wed", "thu", "fri", "sat", "sun"];
+      const todayIso = new Date().toISOString().split("T")[0];
+      const todayRow = daily.find((d) => d.date === todayIso);
+      setTodayXP(todayRow?.xp_earned ?? 0);
+
       const activityMap = new Map<number, number>();
       daily.forEach((d) => {
-        const dayOfWeek = new Date(d.date).getDay(); // 0=Sun
-        const mapped = dayOfWeek === 0 ? 6 : dayOfWeek - 1; // 0=Mon
+        const dayOfWeek = new Date(d.date).getDay();
+        const mapped = dayOfWeek === 0 ? 6 : dayOfWeek - 1;
         activityMap.set(mapped, (activityMap.get(mapped) || 0) + d.xp_earned);
       });
       setWeeklyData(
@@ -60,10 +78,25 @@ export default function DashboardClient() {
           xp: activityMap.get(i) || 0,
         }))
       );
-
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Ma'lumotlarni yuklab bo'lmadi");
+    } finally {
       setLoading(false);
-    });
+    }
   }, [userId]);
+
+  useEffect(() => {
+    fetchAll();
+  }, [fetchAll]);
+
+  // Refresh on window focus — catches XP/progress changes after completing a lesson
+  useEffect(() => {
+    function onFocus() {
+      fetchAll();
+    }
+    window.addEventListener("focus", onFocus);
+    return () => window.removeEventListener("focus", onFocus);
+  }, [fetchAll]);
 
   if (!isLoaded || loading) {
     return (
@@ -73,24 +106,47 @@ export default function DashboardClient() {
     );
   }
 
-  const completedLessons = progress.filter((p) => p.status === "completed");
-  const inProgressLessons = progress.filter((p) => p.status === "in_progress");
+  if (error) {
+    return (
+      <div className="flex flex-col items-center justify-center py-20 gap-3">
+        <p className="text-sm text-muted-foreground">{error}</p>
+        <Button variant="outline" onClick={fetchAll}>
+          Qayta urinib ko&apos;rish
+        </Button>
+      </div>
+    );
+  }
 
-  // Find next lesson to continue or recommend
+  const completedLessons = progress.filter((p) => p.status === "completed");
+  const inProgressLessons = progress
+    .filter((p) => p.status === "in_progress")
+    .sort((a, b) =>
+      (b.completed_at ?? "").localeCompare(a.completed_at ?? "")
+    );
+
   const completedIds = new Set(completedLessons.map((p) => p.lesson_id));
   const inProgressLesson = inProgressLessons[0];
-  const nextLesson = lessons.find((l) => !completedIds.has(l.id));
 
-  // Calculate today's XP (simplified — shows total XP mod daily goal)
-  const todayXP = profile ? profile.total_xp % (profile.daily_goal_xp || 50) : 0;
+  // Pick the continue target: in-progress lesson if any, else first accessible uncompleted
+  const continueLesson = inProgressLesson
+    ? lessons.find((l) => l.id === inProgressLesson.lesson_id)
+    : lessons.find(
+        (l) => !completedIds.has(l.id) && canAccessLesson(l, profile)
+      );
 
-  // Get first hanzi from lesson title_zh for preview
+  // Pick a DIFFERENT lesson for the recommendation card
+  const recommendedLesson = lessons.find(
+    (l) =>
+      !completedIds.has(l.id) &&
+      l.id !== continueLesson?.id &&
+      canAccessLesson(l, profile)
+  );
+
   const getHanziPreview = (lesson: DbLesson) =>
     lesson.title_zh?.slice(0, 2) || "学";
 
   return (
     <div className="max-w-6xl mx-auto space-y-6">
-      {/* Greeting */}
       <motion.div
         initial={{ opacity: 0, y: 10 }}
         animate={{ opacity: 1, y: 0 }}
@@ -104,7 +160,6 @@ export default function DashboardClient() {
         </p>
       </motion.div>
 
-      {/* Streak + XP row */}
       <div className="grid sm:grid-cols-2 gap-4">
         <StreakCard
           streakDays={profile?.streak_days || 0}
@@ -117,41 +172,38 @@ export default function DashboardClient() {
         />
       </div>
 
-      {/* Continue learning */}
-      {(inProgressLesson || nextLesson) && (() => {
-        const lesson = inProgressLesson
-          ? lessons.find((l) => l.id === inProgressLesson.lesson_id)
-          : nextLesson;
-        if (!lesson) return null;
-        const prog = progress.find((p) => p.lesson_id === lesson.id);
-        return (
-          <ContinueLearningCard
-            lessonTitle={lesson.title_uz}
-            lessonId={lesson.id}
-            hskLevel={lesson.hsk_level}
-            progress={prog?.status === "completed" ? 100 : prog ? 50 : 0}
-            hanziPreview={getHanziPreview(lesson)}
-          />
-        );
-      })()}
+      {continueLesson && (
+        <ContinueLearningCard
+          lessonTitle={continueLesson.title_uz}
+          lessonId={continueLesson.id}
+          hskLevel={continueLesson.hsk_level}
+          progress={
+            progress.find((p) => p.lesson_id === continueLesson.id)?.status ===
+            "completed"
+              ? 100
+              : inProgressLesson
+                ? 50
+                : 0
+          }
+          hanziPreview={getHanziPreview(continueLesson)}
+        />
+      )}
 
-      {/* Quick access */}
       <div>
         <h2 className="font-semibold text-lg mb-3">Tezkor kirish</h2>
         <QuickAccessGrid />
       </div>
 
-      {/* Heatmap + Recommended */}
       <div className="grid lg:grid-cols-2 gap-4">
         <WeeklyHeatmap data={weeklyData} />
-        {nextLesson && (
+        {recommendedLesson && (
           <RecommendedLesson
-            title={nextLesson.title_uz}
-            lessonId={nextLesson.id}
-            hskLevel={nextLesson.hsk_level}
-            description={nextLesson.description_uz || ""}
-            hanziPreview={getHanziPreview(nextLesson)}
-            xpReward={nextLesson.xp_reward}
+            title={recommendedLesson.title_uz}
+            lessonId={recommendedLesson.id}
+            hskLevel={recommendedLesson.hsk_level}
+            description={recommendedLesson.description_uz || ""}
+            hanziPreview={getHanziPreview(recommendedLesson)}
+            xpReward={recommendedLesson.xp_reward}
           />
         )}
       </div>
