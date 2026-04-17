@@ -1,12 +1,12 @@
 "use client";
 
-import { useState, useMemo, useEffect } from "react";
-import { Search, BookOpen, Filter, Loader2 } from "lucide-react";
+import { useState, useMemo } from "react";
+import { Search, BookOpen, Filter } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
 import { useUser } from "@/lib/user-context";
-import { getLessons, getUserProgress, type DbLesson, type DbProgress } from "@/lib/db";
+import type { DbLesson, DbProgress } from "@/lib/db";
 import LessonCard from "@/components/lessons/LessonCard";
 import PremiumModal from "@/components/premium/PremiumModal";
 
@@ -20,26 +20,19 @@ const hskLevels = [
   { level: 6, label: "HSK 6" },
 ];
 
-export default function LessonsClient() {
-  const { id: userId, isPremium } = useUser();
+export default function LessonsClient({
+  initialLessons,
+  initialProgress,
+}: {
+  initialLessons: DbLesson[];
+  initialProgress: DbProgress[];
+}) {
+  const { isPremium } = useUser();
   const [activeLevel, setActiveLevel] = useState(0);
   const [searchQuery, setSearchQuery] = useState("");
-  const [lessons, setLessons] = useState<DbLesson[]>([]);
-  const [progress, setProgress] = useState<DbProgress[]>([]);
-  const [loading, setLoading] = useState(true);
+  const lessons = initialLessons;
+  const progress = initialProgress;
   const [premiumModalOpen, setPremiumModalOpen] = useState(false);
-
-  useEffect(() => {
-    getLessons().then((data) => {
-      setLessons(data);
-      setLoading(false);
-    });
-  }, []);
-
-  useEffect(() => {
-    if (!userId) return;
-    getUserProgress(userId).then(setProgress);
-  }, [userId]);
 
   const filteredLessons = useMemo(() => {
     let result = lessons;
@@ -67,14 +60,6 @@ export default function LessonsClient() {
   }, [lessons]);
 
   const completedCount = progress.filter((p) => p.status === "completed").length;
-
-  if (loading) {
-    return (
-      <div className="flex items-center justify-center py-20">
-        <Loader2 className="w-6 h-6 animate-spin text-muted-foreground" />
-      </div>
-    );
-  }
 
   return (
     <div className="max-w-4xl mx-auto space-y-6">

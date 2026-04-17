@@ -1,5 +1,5 @@
 import { notFound } from "next/navigation";
-import { createServerSupabaseClient } from "@/lib/supabase-server";
+import { createPublicSupabaseClient } from "@/lib/supabase-public";
 import type { DbBlogPost } from "@/lib/db";
 import BlogArticleClient from "./BlogArticleClient";
 
@@ -8,7 +8,17 @@ export const metadata = {
 };
 
 // Blog articles rarely change; revalidate hourly so admin edits land promptly.
+// Uses cookie-less client so revalidate actually caches.
 export const revalidate = 3600;
+
+export async function generateStaticParams() {
+  const supabase = createPublicSupabaseClient();
+  const { data } = await supabase
+    .from("blog_posts")
+    .select("slug")
+    .eq("is_published", true);
+  return (data ?? []).map((row: { slug: string }) => ({ slug: row.slug }));
+}
 
 export default async function BlogArticlePage({
   params,
@@ -16,7 +26,7 @@ export default async function BlogArticlePage({
   params: Promise<{ slug: string }>;
 }) {
   const { slug } = await params;
-  const supabase = await createServerSupabaseClient();
+  const supabase = createPublicSupabaseClient();
 
   const { data: post } = await supabase
     .from("blog_posts")

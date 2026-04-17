@@ -1,4 +1,4 @@
-import { createServerSupabaseClient } from "@/lib/supabase-server";
+import { createPublicSupabaseClient } from "@/lib/supabase-public";
 import type { DbBlogPost } from "@/lib/db";
 import BlogClient from "./BlogClient";
 
@@ -8,10 +8,12 @@ export const metadata = {
 };
 
 // Re-fetch at most once per hour; blog posts rarely change.
+// Uses cookie-less client so ISR caching actually works (cookie access
+// would force Next.js to render dynamically and silently disable revalidate).
 export const revalidate = 3600;
 
 export default async function BlogPage() {
-  const supabase = await createServerSupabaseClient();
+  const supabase = createPublicSupabaseClient();
   const { data } = await supabase
     .from("blog_posts")
     .select(

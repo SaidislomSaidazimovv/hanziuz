@@ -103,7 +103,6 @@ export default function AiTutor() {
       }
       setLoadingSessions(false);
     });
-  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [userId]);
 
   const loadSession = async (sessionId: string) => {

@@ -96,7 +96,7 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
     });
   }, []);
 
-  const lastFetchRef = useRef(0);
+  const lastFetchRef = useRef<number | null>(null);
 
   useEffect(() => {
     lastFetchRef.current = Date.now();
@@ -109,7 +109,8 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
     const handleFocus = () => {
       if (!user.id) return;
       const now = Date.now();
-      if (now - lastFetchRef.current < 60_000) return;
+      if (lastFetchRef.current !== null && now - lastFetchRef.current < 60_000)
+        return;
       lastFetchRef.current = now;
       fetchUser();
     };

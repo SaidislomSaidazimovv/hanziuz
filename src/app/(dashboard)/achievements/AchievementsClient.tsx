@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useMemo } from "react";
+import { useState, useMemo } from "react";
 import { motion } from "framer-motion";
 import {
   Trophy,
@@ -17,7 +17,6 @@ import {
   Compass,
   Dumbbell,
   Plane,
-  Loader2,
   Lock,
   CheckCircle2,
   Footprints,
@@ -25,13 +24,7 @@ import {
 import { Progress } from "@/components/ui/progress";
 import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
-import { useUser } from "@/lib/user-context";
-import {
-  getAllAchievements,
-  getUserAchievements,
-  type DbAchievement,
-  type DbUserAchievement,
-} from "@/lib/db";
+import type { DbAchievement, DbUserAchievement } from "@/lib/db";
 
 const iconMap: Record<string, React.ElementType> = {
   footprints: Footprints,
@@ -84,23 +77,16 @@ interface MergedAchievement {
   earned: DbUserAchievement | null;
 }
 
-export default function AchievementsClient() {
-  const { id: userId } = useUser();
-  const [achievements, setAchievements] = useState<DbAchievement[]>([]);
-  const [userAchievements, setUserAchievements] = useState<DbUserAchievement[]>([]);
+export default function AchievementsClient({
+  initialAchievements,
+  initialUserAchievements,
+}: {
+  initialAchievements: DbAchievement[];
+  initialUserAchievements: DbUserAchievement[];
+}) {
+  const achievements = initialAchievements;
+  const userAchievements = initialUserAchievements;
   const [activeFilter, setActiveFilter] = useState("all");
-  const [loading, setLoading] = useState(true);
-
-  useEffect(() => {
-    if (!userId) return;
-    Promise.all([getAllAchievements(), getUserAchievements(userId)]).then(
-      ([all, earned]) => {
-        setAchievements(all);
-        setUserAchievements(earned);
-        setLoading(false);
-      }
-    );
-  }, [userId]);
 
   const merged = useMemo((): MergedAchievement[] => {
     const earnedMap = new Map(
@@ -132,14 +118,6 @@ export default function AchievementsClient() {
     .filter((m) => m.earned)
     .reduce((sum, m) => sum + m.achievement.xp_reward, 0);
   const progressPct = totalCount > 0 ? Math.round((earnedCount / totalCount) * 100) : 0;
-
-  if (loading) {
-    return (
-      <div className="flex items-center justify-center py-20">
-        <Loader2 className="w-6 h-6 animate-spin text-muted-foreground" />
-      </div>
-    );
-  }
 
   return (
     <div className="max-w-5xl mx-auto space-y-6">

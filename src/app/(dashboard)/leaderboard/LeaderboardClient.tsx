@@ -1,22 +1,12 @@
 "use client";
 
-import { useState, useEffect, useMemo } from "react";
+import { useState, useMemo } from "react";
 import { motion } from "framer-motion";
-import {
-  Medal,
-  Crown,
-  Flame,
-  Zap,
-  Loader2,
-} from "lucide-react";
+import { Medal, Crown, Flame, Zap } from "lucide-react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { cn } from "@/lib/utils";
 import { useUser } from "@/lib/user-context";
-import {
-  getLeaderboardAllTime,
-  getLeaderboardPeriod,
-  type LeaderboardEntry,
-} from "@/lib/db";
+import type { LeaderboardEntry } from "@/lib/db";
 
 type Period = "weekly" | "monthly" | "alltime";
 
@@ -42,28 +32,23 @@ const podiumColors = {
   2: { bg: "bg-amber-700/15", border: "border-amber-700/40", text: "text-amber-600", label: "3-o'rin" },
 };
 
-export default function LeaderboardClient() {
+export default function LeaderboardClient({
+  initialWeekly,
+  initialMonthly,
+  initialAllTime,
+}: {
+  initialWeekly: LeaderboardEntry[];
+  initialMonthly: LeaderboardEntry[];
+  initialAllTime: LeaderboardEntry[];
+}) {
   const { id: userId } = useUser();
   const [activePeriod, setActivePeriod] = useState<Period>("alltime");
-  const [entries, setEntries] = useState<LeaderboardEntry[]>([]);
-  const [loading, setLoading] = useState(true);
 
-  useEffect(() => {
-    setLoading(true);
-    const fetch = async () => {
-      let data: LeaderboardEntry[];
-      if (activePeriod === "weekly") {
-        data = await getLeaderboardPeriod(7);
-      } else if (activePeriod === "monthly") {
-        data = await getLeaderboardPeriod(30);
-      } else {
-        data = await getLeaderboardAllTime();
-      }
-      setEntries(data);
-      setLoading(false);
-    };
-    fetch();
-  }, [activePeriod]);
+  const entries = useMemo(() => {
+    if (activePeriod === "weekly") return initialWeekly;
+    if (activePeriod === "monthly") return initialMonthly;
+    return initialAllTime;
+  }, [activePeriod, initialWeekly, initialMonthly, initialAllTime]);
 
   const top3 = entries.slice(0, 3);
   const rest = entries.slice(3);
@@ -111,11 +96,7 @@ export default function LeaderboardClient() {
         ))}
       </div>
 
-      {loading ? (
-        <div className="flex items-center justify-center py-20">
-          <Loader2 className="w-6 h-6 animate-spin text-muted-foreground" />
-        </div>
-      ) : entries.length === 0 ? (
+      {entries.length === 0 ? (
         <div className="text-center py-20">
           <Medal className="w-10 h-10 text-muted-foreground/30 mx-auto mb-3" />
           <p className="text-muted-foreground">

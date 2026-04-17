@@ -1,6 +1,6 @@
 "use client";
 
-import { Fragment, useState, useEffect } from "react";
+import { Fragment } from "react";
 import { motion } from "framer-motion";
 import {
   BarChart3,
@@ -14,15 +14,11 @@ import {
   Target,
   CheckCircle2,
   Clock,
-  Loader2,
 } from "lucide-react";
 import { Progress } from "@/components/ui/progress";
 import { cn } from "@/lib/utils";
-import { useUser } from "@/lib/user-context";
-import { createClient } from "@/lib/supabase";
-import { getDailyActivity } from "@/lib/db";
 
-interface Stats {
+export interface ProgressStats {
   totalXP: number;
   streakDays: number;
   bestStreak: number;
@@ -34,7 +30,7 @@ interface Stats {
   cardsReviewed: number;
 }
 
-interface HskLevel {
+export interface HskLevelProgress {
   level: number;
   label: string;
   wordsLearned: number;
@@ -44,20 +40,19 @@ interface HskLevel {
   color: string;
 }
 
+export interface RecentActivityRow {
+  type: string;
+  text: string;
+  xp: number;
+  completedAt: string;
+}
+
+export interface MonthlyWeek {
+  week: string;
+  days: number[];
+}
+
 const dayLabels = ["Du", "Se", "Ch", "Pa", "Ju", "Sh", "Ya"];
-
-const hskColors: Record<number, string> = {
-  1: "bg-primary",
-  2: "bg-accent",
-  3: "bg-blue-500",
-  4: "bg-purple-500",
-  5: "bg-pink-500",
-  6: "bg-orange-500",
-};
-
-const hskTotalWords: Record<number, number> = {
-  1: 150, 2: 150, 3: 300, 4: 600, 5: 1300, 6: 2500,
-};
 
 function getHeatColor(xp: number): string {
   if (xp === 0) return "bg-secondary";
@@ -77,157 +72,17 @@ function getActivityIcon(type: string) {
   }
 }
 
-export default function ProgressClient() {
-  const { id: userId, isLoaded } = useUser();
-  const [stats, setStats] = useState<Stats | null>(null);
-  const [hskProgress, setHskProgress] = useState<HskLevel[]>([]);
-  const [recentActivity, setRecentActivity] = useState<
-    { type: string; text: string; xp: number; time: string }[]
-  >([]);
-  const [monthlyData, setMonthlyData] = useState<
-    { week: string; days: number[] }[]
-  >([]);
-  const [loading, setLoading] = useState(true);
-
-  useEffect(() => {
-    if (!userId) return;
-
-    const supabase = createClient();
-
-    async function fetchData() {
-      // Parallel fetch — all 5 queries at once
-      const [
-        { data: profile },
-        { data: allLessons },
-        { data: userProgress },
-        { data: vocabData },
-        { data: srsData },
-      ] = await Promise.all([
-        supabase.from("profiles").select("*").eq("id", userId).single(),
-        supabase.from("lessons").select("id, hsk_level"),
-        supabase.from("user_lesson_progress").select("*").eq("user_id", userId),
-        supabase.from("vocabulary").select("id, hsk_level"),
-        supabase.from("srs_reviews").select("id, last_reviewed_at").eq("user_id", userId),
-      ]);
-
-      const completedProgress = (userProgress || []).filter(
-        (p: { status: string }) => p.status === "completed"
-      );
-
-      const scores = completedProgress
-        .map((p: { score: number | null }) => p.score)
-        .filter((s: number | null): s is number => s !== null);
-      const avgScore = scores.length > 0
-        ? Math.round(scores.reduce((a: number, b: number) => a + b, 0) / scores.length)
-        : 0;
-
-      // Unique vocab words learned (from completed lessons)
-      const completedLessonIds = new Set(
-        completedProgress.map((p: { lesson_id: string }) => p.lesson_id)
-      );
-
-      // Count words per HSK level from SRS reviews
-      const reviewedVocabIds = new Set(
-        (srsData || []).map((r: { id: string }) => r.id)
-      );
-
-      setStats({
-        totalXP: profile?.total_xp || 0,
-        streakDays: profile?.streak_days || 0,
-        bestStreak: profile?.best_streak || 0,
-        lessonsCompleted: completedProgress.length,
-        totalLessons: (allLessons || []).length,
-        wordsLearned: reviewedVocabIds.size,
-        totalWords: (vocabData || []).length,
-        averageScore: avgScore,
-        cardsReviewed: (srsData || []).length,
-      });
-
-      // HSK level breakdown
-      const lessonsByLevel: Record<number, string[]> = {};
-      (allLessons || []).forEach((l: { id: string; hsk_level: number }) => {
-        if (!lessonsByLevel[l.hsk_level]) lessonsByLevel[l.hsk_level] = [];
-        lessonsByLevel[l.hsk_level].push(l.id);
-      });
-
-      const vocabByLevel: Record<number, number> = {};
-      (vocabData || []).forEach((v: { hsk_level: number }) => {
-        vocabByLevel[v.hsk_level] = (vocabByLevel[v.hsk_level] || 0) + 1;
-      });
-
-      const hskLevels: HskLevel[] = [1, 2, 3, 4, 5, 6].map((level) => {
-        const levelLessons = lessonsByLevel[level] || [];
-        const levelCompleted = levelLessons.filter((id) =>
-          completedLessonIds.has(id)
-        ).length;
-
-        return {
-          level,
-          label: `HSK ${level}`,
-          wordsLearned: 0, // Will be accurate when SRS tracks per-level
-          totalWords: hskTotalWords[level] || 0,
-          lessonsCompleted: levelCompleted,
-          totalLessons: levelLessons.length,
-          color: hskColors[level] || "bg-gray-500",
-        };
-      });
-      setHskProgress(hskLevels);
-
-      // Recent activity from completed lessons
-      const recent = completedProgress
-        .filter((p: { completed_at: string | null }) => p.completed_at)
-        .sort((a: { completed_at: string }, b: { completed_at: string }) =>
-          new Date(b.completed_at).getTime() - new Date(a.completed_at).getTime()
-        )
-        .slice(0, 6)
-        .map((p: { lesson_id: string; score: number | null; completed_at: string }) => {
-          const timeAgo = getTimeAgo(new Date(p.completed_at));
-          return {
-            type: "lesson",
-            text: `Darsni yakunladi${p.score ? ` — ${p.score}%` : ""}`,
-            xp: 20,
-            time: timeAgo,
-          };
-        });
-
-      setRecentActivity(recent);
-
-      // Fetch daily activity for heatmap (last 28 days)
-      const dailyData = await getDailyActivity(userId, 28);
-      const activityMap = new Map<string, number>();
-      dailyData.forEach((d) => activityMap.set(d.date, d.xp_earned));
-
-      // Build 4-week grid
-      const weeks: { week: string; days: number[] }[] = [];
-      const today = new Date();
-      for (let w = 3; w >= 0; w--) {
-        const days: number[] = [];
-        for (let d = 0; d < 7; d++) {
-          const date = new Date(today);
-          date.setDate(today.getDate() - (w * 7 + (6 - d)));
-          const key = date.toISOString().split("T")[0];
-          days.push(activityMap.get(key) || 0);
-        }
-        weeks.push({ week: `${4 - w}-hafta`, days });
-      }
-      setMonthlyData(weeks);
-
-      setLoading(false);
-    }
-
-    fetchData();
-  }, [userId]);
-
-  if (!isLoaded || loading) {
-    return (
-      <div className="flex items-center justify-center py-20">
-        <Loader2 className="w-6 h-6 animate-spin text-muted-foreground" />
-      </div>
-    );
-  }
-
-  if (!stats) return null;
-
+export default function ProgressClient({
+  stats,
+  hskProgress,
+  recentActivity,
+  monthlyData,
+}: {
+  stats: ProgressStats;
+  hskProgress: HskLevelProgress[];
+  recentActivity: RecentActivityRow[];
+  monthlyData: MonthlyWeek[];
+}) {
   const wordsPercent = stats.totalWords > 0
     ? Math.round((stats.wordsLearned / stats.totalWords) * 100)
     : 0;
@@ -478,6 +333,7 @@ export default function ProgressClient() {
           <div className="space-y-3">
             {recentActivity.map((item, i) => {
               const Icon = getActivityIcon(item.type);
+              const timeText = getTimeAgo(new Date(item.completedAt));
               return (
                 <div
                   key={i}
@@ -494,7 +350,7 @@ export default function ProgressClient() {
                   </div>
                   <div className="flex-1 min-w-0">
                     <p className="text-sm">{item.text}</p>
-                    <p className="text-[10px] text-muted-foreground mt-0.5">{item.time}</p>
+                    <p className="text-[10px] text-muted-foreground mt-0.5">{timeText}</p>
                   </div>
                   {item.xp > 0 && (
                     <span className="text-xs font-semibold text-accent shrink-0">

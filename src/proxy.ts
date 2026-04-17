@@ -67,14 +67,15 @@ export async function proxy(request: NextRequest) {
     }
   );
 
-  // Use getSession() — reads JWT from cookie locally, no network request.
-  // This is fast (<1ms) vs getUser() which calls Supabase API (200-700ms).
+  // Use getUser() — contacts Supabase Auth to validate the session token.
+  // Per Supabase guidance: never trust getSession() on the server for auth
+  // decisions; it only reads cookies without revalidating the JWT.
   const {
-    data: { session },
-  } = await supabase.auth.getSession();
+    data: { user },
+  } = await supabase.auth.getUser();
 
   // Redirect unauthenticated users away from protected routes
-  if (!session && protectedPrefixes.some((p) => pathname.startsWith(p))) {
+  if (!user && protectedPrefixes.some((p) => pathname.startsWith(p))) {
     const url = request.nextUrl.clone();
     url.pathname = "/login";
     url.searchParams.set("redirect", pathname);
@@ -82,7 +83,7 @@ export async function proxy(request: NextRequest) {
   }
 
   // Redirect authenticated users away from auth pages
-  if (session && authPrefixes.some((p) => pathname.startsWith(p))) {
+  if (user && authPrefixes.some((p) => pathname.startsWith(p))) {
     const url = request.nextUrl.clone();
     url.pathname = "/dashboard";
     return NextResponse.redirect(url);

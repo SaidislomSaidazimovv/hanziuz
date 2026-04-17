@@ -1,8 +1,7 @@
 "use client";
 
-import { useState, useEffect, useCallback, useRef } from "react";
+import { useState, useCallback, useEffect, useRef } from "react";
 import { motion } from "framer-motion";
-import { Loader2 } from "lucide-react";
 import { useUser } from "@/lib/user-context";
 import { canAccessLesson } from "@/lib/premium";
 import {
@@ -22,32 +21,56 @@ import QuickAccessGrid from "@/components/dashboard/QuickAccessGrid";
 import WeeklyHeatmap from "@/components/dashboard/WeeklyHeatmap";
 import RecommendedLesson from "@/components/dashboard/RecommendedLesson";
 
-const defaultWeeklyData = [
-  { day: "mon", label: "Du", xp: 0 },
-  { day: "tue", label: "Se", xp: 0 },
-  { day: "wed", label: "Ch", xp: 0 },
-  { day: "thu", label: "Pa", xp: 0 },
-  { day: "fri", label: "Ju", xp: 0 },
-  { day: "sat", label: "Sh", xp: 0 },
-  { day: "sun", label: "Ya", xp: 0 },
-];
+type DailyRow = { date: string; xp_earned: number };
 
 const dayLabels = ["Du", "Se", "Ch", "Pa", "Ju", "Sh", "Ya"];
 const dayKeys = ["mon", "tue", "wed", "thu", "fri", "sat", "sun"];
 
-export default function DashboardClient() {
-  const { id: userId, name, isLoaded } = useUser();
+function buildWeekData(daily: DailyRow[]) {
+  const activityMap = new Map<number, number>();
+  daily.forEach((d) => {
+    const dayOfWeek = new Date(d.date).getDay();
+    const mapped = dayOfWeek === 0 ? 6 : dayOfWeek - 1;
+    activityMap.set(mapped, (activityMap.get(mapped) || 0) + d.xp_earned);
+  });
+  return dayKeys.map((key, i) => ({
+    day: key,
+    label: dayLabels[i],
+    xp: activityMap.get(i) || 0,
+  }));
+}
+
+function todaysXpFromDaily(daily: DailyRow[]) {
+  // Used only by the client refetch path. The initial value comes from the
+  // server via a prop so hydration always matches.
+  const todayIso = new Date().toISOString().split("T")[0];
+  return daily.find((d) => d.date === todayIso)?.xp_earned ?? 0;
+}
+
+export default function DashboardClient({
+  initialProfile,
+  initialLessons,
+  initialProgress,
+  initialDaily,
+  initialTodayXP,
+}: {
+  initialProfile: DbProfile | null;
+  initialLessons: DbLesson[];
+  initialProgress: DbProgress[];
+  initialDaily: DailyRow[];
+  initialTodayXP: number;
+}) {
+  const { id: userId, name } = useUser();
   const userName = name.split(" ")[0] || "";
 
-  const [profile, setProfile] = useState<DbProfile | null>(null);
-  const [lessons, setLessons] = useState<DbLesson[]>([]);
-  const [progress, setProgress] = useState<DbProgress[]>([]);
-  const [weeklyData, setWeeklyData] = useState(defaultWeeklyData);
-  const [todayXP, setTodayXP] = useState(0);
-  const [loading, setLoading] = useState(true);
+  const [profile, setProfile] = useState<DbProfile | null>(initialProfile);
+  const [lessons, setLessons] = useState<DbLesson[]>(initialLessons);
+  const [progress, setProgress] = useState<DbProgress[]>(initialProgress);
+  const [weeklyData, setWeeklyData] = useState(() => buildWeekData(initialDaily));
+  const [todayXP, setTodayXP] = useState(initialTodayXP);
   const [error, setError] = useState<string | null>(null);
 
-  const fetchAll = useCallback(async () => {
+  const refetch = useCallback(async () => {
     if (!userId) return;
     setError(null);
     try {
@@ -60,63 +83,34 @@ export default function DashboardClient() {
       setProfile(p);
       setLessons(l);
       setProgress(pr);
-
-      const todayIso = new Date().toISOString().split("T")[0];
-      const todayRow = daily.find((d) => d.date === todayIso);
-      setTodayXP(todayRow?.xp_earned ?? 0);
-
-      const activityMap = new Map<number, number>();
-      daily.forEach((d) => {
-        const dayOfWeek = new Date(d.date).getDay();
-        const mapped = dayOfWeek === 0 ? 6 : dayOfWeek - 1;
-        activityMap.set(mapped, (activityMap.get(mapped) || 0) + d.xp_earned);
-      });
-      setWeeklyData(
-        dayKeys.map((key, i) => ({
-          day: key,
-          label: dayLabels[i],
-          xp: activityMap.get(i) || 0,
-        }))
-      );
+      setTodayXP(todaysXpFromDaily(daily));
+      setWeeklyData(buildWeekData(daily));
     } catch (e) {
       setError(e instanceof Error ? e.message : "Ma'lumotlarni yuklab bo'lmadi");
-    } finally {
-      setLoading(false);
     }
   }, [userId]);
 
-  const lastFetchRef = useRef(0);
-
+  // Refetch on window focus — debounced to at most once per 60s.
+  // Initial data came from the server; no mount-time fetch needed.
+  const lastFetchRef = useRef<number | null>(null);
   useEffect(() => {
-    lastFetchRef.current = Date.now();
-    fetchAll();
-  }, [fetchAll]);
-
-  // Refresh on window focus — debounced to at most once per 60s
-  useEffect(() => {
+    if (lastFetchRef.current === null) lastFetchRef.current = Date.now();
     function onFocus() {
       const now = Date.now();
-      if (now - lastFetchRef.current < 60_000) return;
+      if (lastFetchRef.current !== null && now - lastFetchRef.current < 60_000)
+        return;
       lastFetchRef.current = now;
-      fetchAll();
+      refetch();
     }
     window.addEventListener("focus", onFocus);
     return () => window.removeEventListener("focus", onFocus);
-  }, [fetchAll]);
-
-  if (!isLoaded || loading) {
-    return (
-      <div className="flex items-center justify-center py-20">
-        <Loader2 className="w-6 h-6 animate-spin text-muted-foreground" />
-      </div>
-    );
-  }
+  }, [refetch]);
 
   if (error) {
     return (
       <div className="flex flex-col items-center justify-center py-20 gap-3">
         <p className="text-sm text-muted-foreground">{error}</p>
-        <Button variant="outline" onClick={fetchAll}>
+        <Button variant="outline" onClick={refetch}>
           Qayta urinib ko&apos;rish
         </Button>
       </div>
@@ -133,14 +127,12 @@ export default function DashboardClient() {
   const completedIds = new Set(completedLessons.map((p) => p.lesson_id));
   const inProgressLesson = inProgressLessons[0];
 
-  // Pick the continue target: in-progress lesson if any, else first accessible uncompleted
   const continueLesson = inProgressLesson
     ? lessons.find((l) => l.id === inProgressLesson.lesson_id)
     : lessons.find(
         (l) => !completedIds.has(l.id) && canAccessLesson(l, profile)
       );
 
-  // Pick a DIFFERENT lesson for the recommendation card
   const recommendedLesson = lessons.find(
     (l) =>
       !completedIds.has(l.id) &&
