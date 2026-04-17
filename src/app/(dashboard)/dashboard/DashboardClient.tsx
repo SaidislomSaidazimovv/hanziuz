@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import { motion } from "framer-motion";
 import { Loader2 } from "lucide-react";
 import { useUser } from "@/lib/user-context";
@@ -85,13 +85,19 @@ export default function DashboardClient() {
     }
   }, [userId]);
 
+  const lastFetchRef = useRef(0);
+
   useEffect(() => {
+    lastFetchRef.current = Date.now();
     fetchAll();
   }, [fetchAll]);
 
-  // Refresh on window focus — catches XP/progress changes after completing a lesson
+  // Refresh on window focus — debounced to at most once per 60s
   useEffect(() => {
     function onFocus() {
+      const now = Date.now();
+      if (now - lastFetchRef.current < 60_000) return;
+      lastFetchRef.current = now;
       fetchAll();
     }
     window.addEventListener("focus", onFocus);

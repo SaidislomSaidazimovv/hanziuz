@@ -1,6 +1,13 @@
 "use client";
 
-import { createContext, useContext, useEffect, useState, useCallback } from "react";
+import {
+  createContext,
+  useContext,
+  useEffect,
+  useState,
+  useCallback,
+  useRef,
+} from "react";
 import { createClient } from "@/lib/supabase";
 
 interface UserData {
@@ -89,14 +96,22 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
     });
   }, []);
 
+  const lastFetchRef = useRef(0);
+
   useEffect(() => {
+    lastFetchRef.current = Date.now();
     fetchUser();
   }, [fetchUser]);
 
-  // Refetch on window focus (catches premium changes from other tabs/admin)
+  // Refetch on window focus — debounced to at most once per 60s
+  // (catches premium changes from other tabs/admin without hammering on alt-tab)
   useEffect(() => {
     const handleFocus = () => {
-      if (user.id) fetchUser();
+      if (!user.id) return;
+      const now = Date.now();
+      if (now - lastFetchRef.current < 60_000) return;
+      lastFetchRef.current = now;
+      fetchUser();
     };
     window.addEventListener("focus", handleFocus);
     return () => window.removeEventListener("focus", handleFocus);

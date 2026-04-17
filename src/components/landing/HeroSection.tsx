@@ -11,9 +11,9 @@ export default function HeroSection() {
     <section className="relative min-h-[90vh] flex items-center justify-center overflow-hidden">
       <FloatingCharacters />
 
-      {/* Gradient orbs */}
-      <div className="absolute top-1/4 left-1/4 w-96 h-96 bg-primary/10 rounded-full blur-3xl" />
-      <div className="absolute bottom-1/4 right-1/4 w-80 h-80 bg-accent/10 rounded-full blur-3xl" />
+      {/* Gradient orbs — hidden on mobile to save paint cost */}
+      <div className="hidden md:block absolute top-1/4 left-1/4 w-96 h-96 bg-primary/10 rounded-full blur-2xl" />
+      <div className="hidden md:block absolute bottom-1/4 right-1/4 w-80 h-80 bg-accent/10 rounded-full blur-2xl" />
 
       <div className="relative z-10 max-w-5xl mx-auto px-6 text-center">
         <motion.div

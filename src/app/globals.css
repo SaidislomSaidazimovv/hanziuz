@@ -9,7 +9,6 @@
   --color-foreground: var(--foreground);
   --font-sans: var(--font-inter);
   --font-chinese: var(--font-noto-sans-sc);
-  --font-mono: var(--font-geist-mono);
   --font-heading: var(--font-inter);
 
   /* HanziUz brand colors */
@@ -136,7 +135,6 @@
   }
   html {
     @apply font-sans;
-    scroll-behavior: smooth;
   }
 }
 
