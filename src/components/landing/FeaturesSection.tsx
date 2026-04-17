@@ -1,6 +1,3 @@
-"use client";
-
-import { motion } from "framer-motion";
 import { Bot, Brain, Gamepad2 } from "lucide-react";
 
 const features = [
@@ -30,56 +27,28 @@ const features = [
   },
 ];
 
-const containerVariants = {
-  hidden: {},
-  visible: {
-    transition: { staggerChildren: 0.15 },
-  },
-};
-
-const cardVariants = {
-  hidden: { opacity: 0, y: 30 },
-  visible: {
-    opacity: 1,
-    y: 0,
-    transition: { duration: 0.6 },
-  },
-};
-
 export default function FeaturesSection() {
   return (
     <section id="features" className="py-24 px-6">
       <div className="max-w-6xl mx-auto">
-        <motion.div
-          className="text-center mb-16"
-          initial={{ opacity: 0, y: 20 }}
-          whileInView={{ opacity: 1, y: 0 }}
-          viewport={{ once: true }}
-          transition={{ duration: 0.6 }}
-        >
+        <div className="text-center mb-16 animate-fade-up-sm">
           <h2 className="text-3xl sm:text-4xl font-bold mb-4">
             Nima uchun <span className="text-primary">HanziUz</span>?
           </h2>
           <p className="text-muted-foreground text-lg max-w-xl mx-auto">
             Zamonaviy texnologiyalar bilan xitoy tilini samarali o&apos;rganing
           </p>
-        </motion.div>
+        </div>
 
-        <motion.div
-          className="grid md:grid-cols-3 gap-8"
-          variants={containerVariants}
-          initial="hidden"
-          whileInView="visible"
-          viewport={{ once: true }}
-        >
-          {features.map((feature) => (
-            <motion.div
+        <div className="grid md:grid-cols-3 gap-8">
+          {features.map((feature, i) => (
+            <div
               key={feature.title}
-              variants={cardVariants}
-              className="group relative rounded-3xl border bg-card p-8 hover:shadow-xl transition-shadow duration-300"
+              style={{ animationDelay: `${0.15 + i * 0.1}s` }}
+              className="group relative rounded-3xl border bg-card p-8 hover:shadow-xl transition-shadow duration-300 animate-fade-up"
             >
               <div
-                className={`absolute inset-0 bg-gradient-to-br ${feature.gradient} rounded-3xl opacity-0 group-hover:opacity-100 transition-opacity duration-300`}
+                className={`absolute inset-0 bg-linear-to-br ${feature.gradient} rounded-3xl opacity-0 group-hover:opacity-100 transition-opacity duration-300`}
               />
               <div className="relative z-10">
                 <div className="w-14 h-14 rounded-2xl bg-secondary flex items-center justify-center mb-6">
@@ -90,9 +59,9 @@ export default function FeaturesSection() {
                   {feature.description}
                 </p>
               </div>
-            </motion.div>
+            </div>
           ))}
-        </motion.div>
+        </div>
       </div>
     </section>
   );

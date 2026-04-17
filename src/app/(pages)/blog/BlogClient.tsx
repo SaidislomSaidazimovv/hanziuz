@@ -1,12 +1,12 @@
 "use client";
 
-import { useState, useEffect, useMemo } from "react";
+import { useState, useMemo } from "react";
 import Link from "next/link";
 import Image from "next/image";
 import { motion } from "framer-motion";
-import { FileText, Calendar, Clock, Loader2 } from "lucide-react";
+import { FileText, Calendar, Clock } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { getBlogPosts, type DbBlogPost } from "@/lib/db";
+import type { DbBlogPost } from "@/lib/db";
 
 const categories = [
   { key: "all", label: "Barchasi" },
@@ -47,22 +47,17 @@ const gradients = [
   "from-amber-500/20 to-red-500/20",
 ];
 
-export default function BlogClient() {
-  const [posts, setPosts] = useState<DbBlogPost[]>([]);
+export default function BlogClient({
+  initialPosts,
+}: {
+  initialPosts: DbBlogPost[];
+}) {
   const [activeCategory, setActiveCategory] = useState("all");
-  const [loading, setLoading] = useState(true);
-
-  useEffect(() => {
-    getBlogPosts().then((data) => {
-      setPosts(data);
-      setLoading(false);
-    });
-  }, []);
 
   const filtered = useMemo(() => {
-    if (activeCategory === "all") return posts;
-    return posts.filter((p) => p.category === activeCategory);
-  }, [posts, activeCategory]);
+    if (activeCategory === "all") return initialPosts;
+    return initialPosts.filter((p) => p.category === activeCategory);
+  }, [initialPosts, activeCategory]);
 
   return (
     <div className="max-w-5xl mx-auto px-6 py-16 space-y-10">
@@ -96,11 +91,7 @@ export default function BlogClient() {
       </div>
 
       {/* Articles grid */}
-      {loading ? (
-        <div className="flex items-center justify-center py-20">
-          <Loader2 className="w-6 h-6 animate-spin text-muted-foreground" />
-        </div>
-      ) : filtered.length === 0 ? (
+      {filtered.length === 0 ? (
         <div className="text-center py-16">
           <p className="text-muted-foreground">
             Bu turkumda maqolalar topilmadi
@@ -126,7 +117,7 @@ export default function BlogClient() {
                     "h-40 flex items-center justify-center relative",
                     post.cover_image_url
                       ? ""
-                      : `bg-gradient-to-br ${gradients[i % gradients.length]}`
+                      : `bg-linear-to-br ${gradients[i % gradients.length]}`
                   )}
                 >
                   {post.cover_image_url ? (

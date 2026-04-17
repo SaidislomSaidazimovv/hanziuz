@@ -10,10 +10,9 @@ import {
   User,
   Link2,
   CheckCircle2,
-  Loader2,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { getBlogPost, getRelatedPosts, type DbBlogPost } from "@/lib/db";
+import type { DbBlogPost } from "@/lib/db";
 
 function getCategoryStyle(cat: string | null): string {
   switch (cat) {
@@ -57,22 +56,17 @@ function renderContent(content: string): string {
     .replace(/$/, '</p>');
 }
 
-export default function BlogArticleClient({ slug }: { slug: string }) {
-  const [post, setPost] = useState<DbBlogPost | null>(null);
-  const [related, setRelated] = useState<DbBlogPost[]>([]);
-  const [loading, setLoading] = useState(true);
+export default function BlogArticleClient({
+  initialPost,
+  initialRelated,
+}: {
+  initialPost: DbBlogPost;
+  initialRelated: DbBlogPost[];
+}) {
+  const post = initialPost;
+  const related = initialRelated;
   const [copied, setCopied] = useState(false);
   const [scrollProgress, setScrollProgress] = useState(0);
-
-  useEffect(() => {
-    getBlogPost(slug).then((data) => {
-      setPost(data);
-      if (data?.category) {
-        getRelatedPosts(data.category, slug).then(setRelated);
-      }
-      setLoading(false);
-    });
-  }, [slug]);
 
   // Reading progress bar
   useEffect(() => {
@@ -90,29 +84,6 @@ export default function BlogArticleClient({ slug }: { slug: string }) {
     setCopied(true);
     setTimeout(() => setCopied(false), 2000);
   };
-
-  if (loading) {
-    return (
-      <div className="flex items-center justify-center py-20">
-        <Loader2 className="w-6 h-6 animate-spin text-muted-foreground" />
-      </div>
-    );
-  }
-
-  if (!post) {
-    return (
-      <div className="max-w-3xl mx-auto px-6 py-20 text-center">
-        <p className="text-muted-foreground mb-4">Maqola topilmadi</p>
-        <Link
-          href="/blog"
-          className="text-primary hover:underline inline-flex items-center gap-1"
-        >
-          <ArrowLeft className="w-4 h-4" />
-          Blogga qaytish
-        </Link>
-      </div>
-    );
-  }
 
   return (
     <>

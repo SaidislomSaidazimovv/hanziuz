@@ -170,6 +170,38 @@
   66% { transform: translateY(10px) rotate(-2deg); }
 }
 
+/* Entry animations — replace framer-motion mount fades for server components.
+   Use with style={{ animationDelay: "0.15s" }} for stagger. */
+@keyframes fadeUp {
+  from { opacity: 0; transform: translateY(30px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes fadeUpSmall {
+  from { opacity: 0; transform: translateY(20px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+
+.animate-fade-up {
+  opacity: 0;
+  animation: fadeUp 0.7s ease-out forwards;
+}
+
+.animate-fade-up-sm {
+  opacity: 0;
+  animation: fadeUpSmall 0.6s ease-out forwards;
+}
+
+.animate-fade-in {
+  opacity: 0;
+  animation: fadeIn 0.7s ease-out forwards;
+}
+
 /* Custom scrollbar — Webkit */
 ::-webkit-scrollbar {
   width: 4px;

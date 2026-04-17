@@ -108,6 +108,27 @@ export async function getSrsRecordsBatch(
 
 export async function getSrsStats(userId: string): Promise<SrsStats> {
   const supabase = createClient();
+
+  // Try the single-RPC fast path (migration 019). If unavailable (older DB),
+  // fall back to the 8-parallel-query path below.
+  const { data: rpc, error: rpcError } = await supabase
+    .rpc("get_srs_stats", { uid: userId })
+    .maybeSingle();
+
+  if (!rpcError && rpc) {
+    const r = rpc as Record<string, number | null>;
+    return {
+      due: r.due ?? 0,
+      newCount: r.new_count ?? 0,
+      learned: r.learned ?? 0,
+      mastered: r.mastered ?? 0,
+      leeches: r.leeches ?? 0,
+      reviewedToday: r.reviewed_today ?? 0,
+      tomorrowDue: r.tomorrow_due ?? 0,
+      weekDue: r.week_due ?? 0,
+    };
+  }
+
   const now = new Date();
   const nowIso = now.toISOString();
 
