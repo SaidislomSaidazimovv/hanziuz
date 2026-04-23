@@ -5,6 +5,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import {
   BookOpen,
   Pencil,
+  Headphones,
   Layers,
   Brain,
   ChevronRight,
@@ -15,6 +16,7 @@ import {
   Lock,
   Loader2,
 } from "lucide-react";
+import LessonListeningStep from "./LessonListeningStep";
 import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
 import { cn } from "@/lib/utils";
@@ -27,6 +29,7 @@ import Link from "next/link";
 const steps = [
   { id: "learn", label: "O'rganish", icon: BookOpen },
   { id: "practice", label: "Mashq", icon: Pencil },
+  { id: "listen", label: "Tinglash", icon: Headphones },
   { id: "flashcards", label: "Kartochkalar", icon: Layers },
   { id: "quiz", label: "Test", icon: Brain },
 ];
@@ -148,7 +151,7 @@ export default function LessonContent({ lesson, vocab }: LessonContentProps) {
         setQuizAnswer(null);
       } else {
         setCompletedSteps((prev) =>
-          prev.includes(3) ? prev : [...prev, 3]
+          prev.includes(4) ? prev : [...prev, 4]
         );
         setQuizDone(true);
         // Save to Supabase
@@ -161,7 +164,7 @@ export default function LessonContent({ lesson, vocab }: LessonContentProps) {
 
   // Memoize quiz options so they don't reshuffle on every render
   const quizOptions = useMemo(() => {
-    if (currentStep !== 3 || !currentWord) return [];
+    if (currentStep !== 4 || !currentWord) return [];
     const others = vocab
       .filter((w) => w.id !== currentWord.id)
       .sort(() => Math.random() - 0.5)
@@ -173,6 +176,7 @@ export default function LessonContent({ lesson, vocab }: LessonContentProps) {
 
   const nextStepLabel = [
     "Mashqqa o'tish",
+    "Tinglashga o'tish",
     "Kartochkalarga o'tish",
     "Testga o'tish",
     "",
@@ -385,8 +389,16 @@ export default function LessonContent({ lesson, vocab }: LessonContentProps) {
             </div>
           )}
 
-          {/* STEP 3: Flashcards */}
-          {currentStep === 2 && currentWord && (
+          {/* STEP 3: Listening */}
+          {currentStep === 2 && (
+            <LessonListeningStep
+              vocab={vocab}
+              onComplete={completeCurrentStepAndAdvance}
+            />
+          )}
+
+          {/* STEP 4: Flashcards */}
+          {currentStep === 3 && currentWord && (
             <div className="rounded-2xl border bg-card p-6 sm:p-8 space-y-6">
               <p className="text-xs text-muted-foreground text-center mb-3">
                 {currentWordIdx + 1} / {vocab.length} — Kartochka
@@ -451,8 +463,8 @@ export default function LessonContent({ lesson, vocab }: LessonContentProps) {
             </div>
           )}
 
-          {/* STEP 4: Quiz */}
-          {currentStep === 3 && !quizDone && currentWord && (
+          {/* STEP 5: Quiz */}
+          {currentStep === 4 && !quizDone && currentWord && (
             <div className="rounded-2xl border bg-card p-6 sm:p-8 space-y-6">
               <p className="text-xs text-muted-foreground text-center">
                 {currentWordIdx + 1} / {vocab.length} — Test

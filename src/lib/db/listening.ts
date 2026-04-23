@@ -50,6 +50,25 @@ export async function getListeningClipsForSession(
 }
 
 /**
+ * Fetches clips matching a list of hanzi strings — used by the in-lesson
+ * listening step to pull audio for that lesson's specific vocabulary.
+ */
+export async function getListeningClipsByHanzi(
+  hanziList: string[]
+): Promise<ListeningClip[]> {
+  if (hanziList.length === 0) return [];
+  const supabase = createClient();
+  const { data } = await supabase
+    .from("listening_clips")
+    .select(
+      "id, audio_url, transcript_zh, transcript_pinyin, translation_uz, duration_seconds, hsk_level, clip_type"
+    )
+    .in("transcript_zh", hanziList)
+    .eq("clip_type", "word");
+  return (data as ListeningClip[]) ?? [];
+}
+
+/**
  * Records one attempt of a user on a clip. Upserts — first attempt creates
  * the row, subsequent attempts increment counters.
  */
