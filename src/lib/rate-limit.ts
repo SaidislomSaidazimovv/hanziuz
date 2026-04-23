@@ -2,18 +2,30 @@ import { Redis } from "@upstash/redis";
 import { Ratelimit } from "@upstash/ratelimit";
 
 // Upstash is the production path — global, shared across all Vercel instances.
-// If env vars are missing (e.g. local dev without Upstash), we fall back to an
-// in-memory Map per process.
-const hasUpstash =
-  !!process.env.UPSTASH_REDIS_REST_URL &&
-  !!process.env.UPSTASH_REDIS_REST_TOKEN;
+// If env vars are missing or malformed, fall back to an in-memory Map per
+// process. Initialization is lazy so a bad env var doesn't crash the build
+// at module-load time.
+let redisInstance: Redis | null | undefined = undefined;
 
-const redis = hasUpstash
-  ? new Redis({
-      url: process.env.UPSTASH_REDIS_REST_URL!,
-      token: process.env.UPSTASH_REDIS_REST_TOKEN!,
-    })
-  : null;
+function getRedis(): Redis | null {
+  if (redisInstance !== undefined) return redisInstance;
+
+  const url = process.env.UPSTASH_REDIS_REST_URL?.trim();
+  const token = process.env.UPSTASH_REDIS_REST_TOKEN?.trim();
+
+  if (!url || !token || !url.startsWith("https://")) {
+    redisInstance = null;
+    return null;
+  }
+
+  try {
+    redisInstance = new Redis({ url, token });
+  } catch (err) {
+    console.warn("[rate-limit] Upstash init failed, using in-memory:", err);
+    redisInstance = null;
+  }
+  return redisInstance;
+}
 
 // Cache Ratelimit instances per (limit, window, name) combo to avoid recreating
 // them on every call. Each limiter has its own prefix so different endpoints
@@ -25,6 +37,7 @@ function getLimiter(
   windowMs: number,
   name: string
 ): Ratelimit | null {
+  const redis = getRedis();
   if (!redis) return null;
   const cacheKey = `${name}:${limit}:${windowMs}`;
   const cached = limiterCache.get(cacheKey);
