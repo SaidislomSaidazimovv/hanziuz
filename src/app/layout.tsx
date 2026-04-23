@@ -1,6 +1,7 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import { Inter, Noto_Sans_SC } from "next/font/google";
 import "./globals.css";
+import ServiceWorkerRegister from "@/components/ServiceWorkerRegister";
 
 const inter = Inter({
   variable: "--font-inter",
@@ -28,6 +29,15 @@ export const metadata: Metadata = {
     "chinese learning",
     "uzbekistan",
   ],
+  appleWebApp: {
+    capable: true,
+    title: "HanziUz",
+    statusBarStyle: "default",
+  },
+};
+
+export const viewport: Viewport = {
+  themeColor: "#DC2626",
 };
 
 export default function RootLayout({
@@ -41,7 +51,10 @@ export default function RootLayout({
       lang="uz"
       className={`${inter.variable} ${notoSansSC.variable} h-full antialiased`}
     >
-      <body suppressHydrationWarning className="min-h-full flex flex-col">{children}</body>
+      <body suppressHydrationWarning className="min-h-full flex flex-col">
+        {children}
+        <ServiceWorkerRegister />
+      </body>
     </html>
   );
 }
