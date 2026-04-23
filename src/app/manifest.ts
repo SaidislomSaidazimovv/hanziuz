@@ -21,16 +21,13 @@ export default function manifest(): MetadataRoute.Manifest {
         purpose: "any",
       },
       {
-        src: "/icon-192.png",
-        type: "image/png",
-        sizes: "192x192",
-        purpose: "maskable",
-      },
-      {
-        src: "/icon-512.png",
+        // Next.js serves src/app/icon.tsx as a 512x512 PNG at /icon.
+        // We list it here for Chrome's PWA install requirements (wants a
+        // raster PNG ≥192px); the SVG above covers everything else.
+        src: "/icon",
         type: "image/png",
         sizes: "512x512",
-        purpose: "maskable",
+        purpose: "any",
       },
     ],
   };
