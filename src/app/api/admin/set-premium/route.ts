@@ -6,9 +6,10 @@ import { ADMIN_COOKIE_NAME, isValidAdminCookie } from "@/lib/admin-auth";
 export async function POST(request: Request) {
   try {
     const ip = getIP(request);
-    const { success: rlOk } = rateLimit(ip, {
+    const { success: rlOk } = await rateLimit(ip, {
       limit: 5,
       windowMs: 300_000,
+      name: "admin-set-premium",
     });
     if (!rlOk) {
       return Response.json(

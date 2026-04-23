@@ -28,9 +28,10 @@ Foydalanuvchiga xitoy tilini o'rganishda yordam ber, savollarga javob ber, va ma
 export async function POST(request: Request) {
   try {
     const ip = getIP(request);
-    const { success: rlOk } = rateLimit(ip, {
+    const { success: rlOk } = await rateLimit(ip, {
       limit: 30,
       windowMs: 60_000,
+      name: "ai-tutor",
     });
     if (!rlOk) {
       return Response.json(

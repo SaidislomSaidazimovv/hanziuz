@@ -9,9 +9,10 @@ import { rateLimit, getIP } from "@/lib/rate-limit";
 export async function POST(request: Request) {
   try {
     const ip = getIP(request);
-    const { success: rlOk } = rateLimit(ip, {
+    const { success: rlOk } = await rateLimit(ip, {
       limit: 5,
       windowMs: 300_000,
+      name: "admin-login",
     });
     if (!rlOk) {
       return Response.json(
