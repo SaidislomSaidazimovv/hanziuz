@@ -90,6 +90,36 @@ export async function rateLimit(
   return { success: true, remaining: options.limit - record.count };
 }
 
+// Diagnostic — probes Upstash with a real SET+GET round-trip. Used by the
+// /api/_health endpoint to verify the env vars are configured and the network
+// path works end to end.
+export async function upstashHealthCheck(): Promise<{
+  configured: boolean;
+  reachable: boolean;
+  roundTripMs?: number;
+  error?: string;
+}> {
+  const redis = getRedis();
+  if (!redis) return { configured: false, reachable: false };
+  const start = Date.now();
+  try {
+    await redis.set("hz:health", "ok", { ex: 300 });
+    const val = await redis.get<string>("hz:health");
+    return {
+      configured: true,
+      reachable: val === "ok",
+      roundTripMs: Date.now() - start,
+    };
+  } catch (err) {
+    return {
+      configured: true,
+      reachable: false,
+      roundTripMs: Date.now() - start,
+      error: err instanceof Error ? err.message : String(err),
+    };
+  }
+}
+
 export function getIP(request: Request): string {
   return (
     request.headers.get("x-forwarded-for")?.split(",")[0]?.trim() ||
