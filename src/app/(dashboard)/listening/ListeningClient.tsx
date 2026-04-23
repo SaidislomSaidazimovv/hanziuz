@@ -11,12 +11,21 @@ import {
 
 type Screen = "entry" | "loading" | "session" | "empty";
 
+export interface UserListeningProgress {
+  attemptedClips: number;
+  totalAttempts: number;
+  totalCorrect: number;
+  accuracyPct: number;
+}
+
 export default function ListeningClient({
   totalClips,
   clipsPerLevel,
+  userProgress,
 }: {
   totalClips: number;
   clipsPerLevel: Record<number, number>;
+  userProgress: UserListeningProgress;
 }) {
   const [screen, setScreen] = useState<Screen>("entry");
   const [clips, setClips] = useState<ListeningClip[]>([]);
@@ -92,6 +101,7 @@ export default function ListeningClient({
     <ListeningEntry
       totalClips={totalClips}
       clipsPerLevel={clipsPerLevel}
+      userProgress={userProgress}
       onStart={start}
       errorMsg={errorMsg}
     />

@@ -2,21 +2,31 @@
 
 import { useState } from "react";
 import { motion } from "framer-motion";
-import { Ear, Headphones, Volume2, Music } from "lucide-react";
+import {
+  Ear,
+  Headphones,
+  Volume2,
+  Music,
+  Target,
+  CheckCircle2,
+} from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import type { ListeningMode } from "@/lib/db/listening";
+import type { UserListeningProgress } from "./ListeningClient";
 
 const HSK_LEVELS = [1, 2, 3, 4];
 
 export default function ListeningEntry({
   totalClips,
   clipsPerLevel,
+  userProgress,
   onStart,
   errorMsg,
 }: {
   totalClips: number;
   clipsPerLevel: Record<number, number>;
+  userProgress: UserListeningProgress;
   onStart: (hskLevel: number, mode: ListeningMode) => void;
   errorMsg: string | null;
 }) {
@@ -45,17 +55,50 @@ export default function ListeningEntry({
         </div>
       )}
 
-      <div className="rounded-2xl border bg-card p-5 flex items-center gap-4">
-        <div className="w-12 h-12 rounded-xl bg-primary/10 flex items-center justify-center">
-          <Ear className="w-6 h-6 text-primary" />
+      {/* Stats row: total library + personal progress */}
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+        <div className="rounded-2xl border bg-card p-5 flex items-center gap-3">
+          <div className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center shrink-0">
+            <Ear className="w-5 h-5 text-primary" />
+          </div>
+          <div className="min-w-0">
+            <p className="text-xl font-bold">
+              {totalClips.toLocaleString("uz-UZ")}
+            </p>
+            <p className="text-xs text-muted-foreground">
+              jami audio kartochka
+            </p>
+          </div>
         </div>
-        <div>
-          <p className="text-2xl font-bold">
-            {totalClips.toLocaleString("uz-UZ")}
-          </p>
-          <p className="text-xs text-muted-foreground">
-            jami audio kartochka
-          </p>
+
+        <div className="rounded-2xl border bg-card p-5 flex items-center gap-3">
+          <div className="w-10 h-10 rounded-xl bg-blue-500/10 flex items-center justify-center shrink-0">
+            <CheckCircle2 className="w-5 h-5 text-blue-500" />
+          </div>
+          <div className="min-w-0">
+            <p className="text-xl font-bold">
+              {userProgress.attemptedClips.toLocaleString("uz-UZ")}
+            </p>
+            <p className="text-xs text-muted-foreground">
+              siz eshitgan so&apos;zlar
+            </p>
+          </div>
+        </div>
+
+        <div className="rounded-2xl border bg-card p-5 flex items-center gap-3">
+          <div className="w-10 h-10 rounded-xl bg-green-500/10 flex items-center justify-center shrink-0">
+            <Target className="w-5 h-5 text-green-500" />
+          </div>
+          <div className="min-w-0">
+            <p className="text-xl font-bold">
+              {userProgress.totalAttempts > 0
+                ? `${userProgress.accuracyPct}%`
+                : "—"}
+            </p>
+            <p className="text-xs text-muted-foreground">
+              aniqligingiz
+            </p>
+          </div>
         </div>
       </div>
 

@@ -23,26 +23,49 @@ export default async function DashboardPage() {
   const todayIso = currentDayIso();
   const weekStartIso = weekStartIsoNDaysAgo(7);
 
-  const [profileRes, lessonsRes, progressRes, dailyRes] = await Promise.all([
-    supabase.from("profiles").select("*").eq("id", userId).single(),
-    supabase
-      .from("lessons")
-      .select("*")
-      .order("hsk_level")
-      .order("order_num"),
-    supabase.from("user_lesson_progress").select("*").eq("user_id", userId),
-    supabase
-      .from("daily_activity")
-      .select("date, xp_earned")
-      .eq("user_id", userId)
-      .gte("date", weekStartIso)
-      .order("date"),
-  ]);
+  const [profileRes, lessonsRes, progressRes, dailyRes, listeningRes] =
+    await Promise.all([
+      supabase.from("profiles").select("*").eq("id", userId).single(),
+      supabase
+        .from("lessons")
+        .select("*")
+        .order("hsk_level")
+        .order("order_num"),
+      supabase.from("user_lesson_progress").select("*").eq("user_id", userId),
+      supabase
+        .from("daily_activity")
+        .select("date, xp_earned")
+        .eq("user_id", userId)
+        .gte("date", weekStartIso)
+        .order("date"),
+      supabase
+        .from("user_listening_progress")
+        .select("clip_id, attempts, correct_count")
+        .eq("user_id", userId),
+    ]);
 
   const daily =
     (dailyRes.data as { date: string; xp_earned: number }[]) ?? [];
   const initialTodayXP =
     daily.find((d) => d.date === todayIso)?.xp_earned ?? 0;
+
+  const listeningRows = (listeningRes.data ?? []) as {
+    clip_id: string;
+    attempts: number;
+    correct_count: number;
+  }[];
+  const listeningAttemptedClips = new Set(
+    listeningRows.map((r) => r.clip_id)
+  ).size;
+  const listeningAttempts = listeningRows.reduce((s, r) => s + r.attempts, 0);
+  const listeningCorrect = listeningRows.reduce(
+    (s, r) => s + r.correct_count,
+    0
+  );
+  const listeningAccuracyPct =
+    listeningAttempts === 0
+      ? 0
+      : Math.round((listeningCorrect / listeningAttempts) * 100);
 
   return (
     <DashboardClient
@@ -51,6 +74,11 @@ export default async function DashboardPage() {
       initialProgress={(progressRes.data as DbProgress[]) ?? []}
       initialDaily={daily}
       initialTodayXP={initialTodayXP}
+      initialListening={{
+        attemptedClips: listeningAttemptedClips,
+        totalAttempts: listeningAttempts,
+        accuracyPct: listeningAccuracyPct,
+      }}
     />
   );
 }

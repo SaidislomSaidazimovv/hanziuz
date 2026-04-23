@@ -20,6 +20,8 @@ import ContinueLearningCard from "@/components/dashboard/ContinueLearningCard";
 import QuickAccessGrid from "@/components/dashboard/QuickAccessGrid";
 import WeeklyHeatmap from "@/components/dashboard/WeeklyHeatmap";
 import RecommendedLesson from "@/components/dashboard/RecommendedLesson";
+import Link from "next/link";
+import { Headphones, ArrowRight, Target } from "lucide-react";
 
 type DailyRow = { date: string; xp_earned: number };
 
@@ -47,18 +49,26 @@ function todaysXpFromDaily(daily: DailyRow[]) {
   return daily.find((d) => d.date === todayIso)?.xp_earned ?? 0;
 }
 
+interface InitialListening {
+  attemptedClips: number;
+  totalAttempts: number;
+  accuracyPct: number;
+}
+
 export default function DashboardClient({
   initialProfile,
   initialLessons,
   initialProgress,
   initialDaily,
   initialTodayXP,
+  initialListening,
 }: {
   initialProfile: DbProfile | null;
   initialLessons: DbLesson[];
   initialProgress: DbProgress[];
   initialDaily: DailyRow[];
   initialTodayXP: number;
+  initialListening: InitialListening;
 }) {
   const { id: userId, name } = useUser();
   const userName = name.split(" ")[0] || "";
@@ -186,6 +196,42 @@ export default function DashboardClient({
           hanziPreview={getHanziPreview(continueLesson)}
         />
       )}
+
+      {/* Listening mini-stats */}
+      <Link
+        href="/listening"
+        className="group block rounded-2xl border bg-card p-5 hover:border-primary/50 transition-colors"
+      >
+        <div className="flex items-center gap-4">
+          <div className="w-11 h-11 rounded-xl bg-primary/10 flex items-center justify-center shrink-0">
+            <Headphones className="w-5 h-5 text-primary" />
+          </div>
+          <div className="flex-1 min-w-0 grid grid-cols-2 gap-3">
+            <div>
+              <p className="text-xl font-bold">
+                {initialListening.attemptedClips}
+              </p>
+              <p className="text-xs text-muted-foreground">
+                so&apos;z eshitildi
+              </p>
+            </div>
+            <div>
+              <p className="text-xl font-bold flex items-center gap-1.5">
+                {initialListening.totalAttempts > 0 ? (
+                  <>
+                    <Target className="w-4 h-4 text-green-500" />
+                    {initialListening.accuracyPct}%
+                  </>
+                ) : (
+                  "—"
+                )}
+              </p>
+              <p className="text-xs text-muted-foreground">aniqligingiz</p>
+            </div>
+          </div>
+          <ArrowRight className="w-5 h-5 text-muted-foreground group-hover:text-primary group-hover:translate-x-0.5 transition-all shrink-0" />
+        </div>
+      </Link>
 
       <div>
         <h2 className="font-semibold text-lg mb-3">Tezkor kirish</h2>
