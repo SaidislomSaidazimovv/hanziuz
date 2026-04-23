@@ -20,6 +20,7 @@ import {
   Bot,
   BarChart3,
   Crown,
+  Headphones,
 } from "lucide-react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Input } from "@/components/ui/input";
@@ -34,6 +35,7 @@ const mobileNavItems = [
   { label: "Panel", href: "/dashboard", icon: LayoutDashboard },
   { label: "Darslar", href: "/lessons", icon: BookOpen },
   { label: "Kartochkalar", href: "/flashcards", icon: Layers },
+  { label: "Tinglash", href: "/listening", icon: Headphones },
   { label: "Test", href: "/quiz", icon: Brain },
   { label: "AI", href: "/ai-tutor", icon: Bot },
   { label: "Natijalar", href: "/progress", icon: BarChart3 },

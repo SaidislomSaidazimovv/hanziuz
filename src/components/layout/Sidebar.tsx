@@ -14,6 +14,7 @@ import {
   Crown,
   Trophy,
   Medal,
+  Headphones,
   ChevronLeft,
   ChevronRight,
 } from "lucide-react";
@@ -34,6 +35,11 @@ const navItems = [
     label: "Kartochkalar",
     href: "/flashcards",
     icon: Layers,
+  },
+  {
+    label: "Tinglash",
+    href: "/listening",
+    icon: Headphones,
   },
   {
     label: "Test",
