@@ -6,6 +6,7 @@ import ListeningSession from "./ListeningSession";
 import {
   getListeningClipsForSession,
   type ListeningClip,
+  type ListeningMode,
 } from "@/lib/db/listening";
 
 type Screen = "entry" | "loading" | "session" | "empty";
@@ -20,19 +21,27 @@ export default function ListeningClient({
   const [screen, setScreen] = useState<Screen>("entry");
   const [clips, setClips] = useState<ListeningClip[]>([]);
   const [activeLevel, setActiveLevel] = useState<number>(1);
+  const [activeMode, setActiveMode] = useState<ListeningMode>("word");
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
 
-  const start = useCallback(async (hskLevel: number) => {
+  const start = useCallback(async (hskLevel: number, mode: ListeningMode) => {
     setErrorMsg(null);
     setActiveLevel(hskLevel);
+    setActiveMode(mode);
     setScreen("loading");
     try {
-      const fetched = await getListeningClipsForSession(hskLevel, 50);
-      if (fetched.length === 0) {
+      const fetched = await getListeningClipsForSession(hskLevel, 100);
+      // For tone mode, restrict to single-character clips so questions test
+      // a single syllable's tone, not a compound.
+      const pool =
+        mode === "tone"
+          ? fetched.filter((c) => [...c.transcript_zh].length === 1)
+          : fetched;
+      if (pool.length < 4) {
         setScreen("empty");
         return;
       }
-      setClips(fetched);
+      setClips(pool);
       setScreen("session");
     } catch (e) {
       setErrorMsg(e instanceof Error ? e.message : "Yuklab bo'lmadi");
@@ -55,6 +64,7 @@ export default function ListeningClient({
       <ListeningSession
         clips={clips}
         hskLevel={activeLevel}
+        mode={activeMode}
         onExit={backToEntry}
       />
     );
@@ -64,7 +74,9 @@ export default function ListeningClient({
     return (
       <div className="max-w-md mx-auto text-center py-20 space-y-3">
         <p className="text-muted-foreground">
-          HSK {activeLevel} uchun audio kartochkalar topilmadi.
+          {activeMode === "tone"
+            ? `HSK ${activeLevel} uchun bir bo'g'inli audio kartochkalar yetarli emas.`
+            : `HSK ${activeLevel} uchun audio kartochkalar topilmadi.`}
         </p>
         <button
           onClick={backToEntry}

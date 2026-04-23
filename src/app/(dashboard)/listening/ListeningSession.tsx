@@ -11,19 +11,26 @@ import {
   ArrowRight,
   Trophy,
   Loader2,
+  Gauge,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
 import { cn } from "@/lib/utils";
 import { addXP, createNotification } from "@/lib/db";
 import { useUser } from "@/lib/user-context";
-import type { ListeningClip } from "@/lib/db/listening";
+import {
+  extractTone,
+  recordListeningAttempt,
+  type ListeningClip,
+  type ListeningMode,
+} from "@/lib/db/listening";
 
 const SESSION_SIZE = 10;
+const SPEEDS = [0.75, 1, 1.5] as const;
 
 interface Question {
   clip: ListeningClip;
-  options: string[]; // 4 hanzi, shuffled
+  options: string[];
   correctIndex: number;
 }
 
@@ -36,9 +43,9 @@ function shuffle<T>(array: T[]): T[] {
   return out;
 }
 
-function buildQuestions(pool: ListeningClip[], size: number): Question[] {
+function buildWordQuestions(pool: ListeningClip[]): Question[] {
   const shuffled = shuffle(pool);
-  const questionClips = shuffled.slice(0, Math.min(size, shuffled.length));
+  const questionClips = shuffled.slice(0, Math.min(SESSION_SIZE, shuffled.length));
 
   return questionClips.map((clip) => {
     const distractors = shuffle(
@@ -55,19 +62,40 @@ function buildQuestions(pool: ListeningClip[], size: number): Question[] {
   });
 }
 
+const TONE_LABELS = ["1-ohang ā", "2-ohang á", "3-ohang ǎ", "4-ohang à"];
+
+function buildToneQuestions(pool: ListeningClip[]): Question[] {
+  // Drop neutral-tone clips (rare in HSK 1-2 single chars)
+  const clipsWithTones = pool
+    .map((c) => ({ clip: c, tone: extractTone(c.transcript_pinyin) }))
+    .filter((x) => x.tone >= 1 && x.tone <= 4);
+
+  const shuffled = shuffle(clipsWithTones);
+  const chosen = shuffled.slice(0, Math.min(SESSION_SIZE, shuffled.length));
+
+  return chosen.map(({ clip, tone }) => ({
+    clip,
+    options: TONE_LABELS,
+    correctIndex: tone - 1,
+  }));
+}
+
 export default function ListeningSession({
   clips,
   hskLevel,
+  mode,
   onExit,
 }: {
   clips: ListeningClip[];
   hskLevel: number;
+  mode: ListeningMode;
   onExit: () => void;
 }) {
   const { id: userId } = useUser();
   const questions = useMemo(
-    () => buildQuestions(clips, SESSION_SIZE),
-    [clips]
+    () =>
+      mode === "word" ? buildWordQuestions(clips) : buildToneQuestions(clips),
+    [clips, mode]
   );
   const [idx, setIdx] = useState(0);
   const [selected, setSelected] = useState<number | null>(null);
@@ -76,6 +104,7 @@ export default function ListeningSession({
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const [playing, setPlaying] = useState(false);
   const [loadError, setLoadError] = useState(false);
+  const [speed, setSpeed] = useState<(typeof SPEEDS)[number]>(1);
 
   const current = questions[idx];
 
@@ -87,12 +116,13 @@ export default function ListeningSession({
     audioRef.current.pause();
     audioRef.current.currentTime = 0;
     audioRef.current.src = current.clip.audio_url;
+    audioRef.current.playbackRate = speed;
     audioRef.current.load();
     audioRef.current
       .play()
       .then(() => setPlaying(true))
       .catch(() => setPlaying(false));
-  }, [current]);
+  }, [current, speed]);
 
   useEffect(() => {
     const el = audioRef.current;
@@ -131,11 +161,24 @@ export default function ListeningSession({
     audioRef.current.play().catch(() => setPlaying(false));
   }
 
+  function changeSpeed(s: (typeof SPEEDS)[number]) {
+    setSpeed(s);
+    if (audioRef.current) audioRef.current.playbackRate = s;
+  }
+
   function pick(i: number) {
     if (selected !== null) return;
     setSelected(i);
     const correct = i === current.correctIndex;
     setResults((prev) => [...prev, correct]);
+    // Fire-and-forget progress tracking
+    if (userId) {
+      recordListeningAttempt(userId, current.clip.id, mode, correct).catch(
+        () => {
+          // Non-blocking; progress tracking failures don't interrupt the session.
+        }
+      );
+    }
   }
 
   function next() {
@@ -149,7 +192,7 @@ export default function ListeningSession({
   async function finishSession() {
     setDone(true);
     const correctCount = results.filter(Boolean).length;
-    const xp = 5 + correctCount; // 5 base + 1 per correct
+    const xp = 5 + correctCount;
     if (userId) {
       try {
         await addXP(userId, xp);
@@ -231,7 +274,8 @@ export default function ListeningSession({
 
       <div className="flex items-center justify-between">
         <p className="text-sm text-muted-foreground">
-          HSK {hskLevel} — Tinglash
+          HSK {hskLevel} —{" "}
+          {mode === "word" ? "So'z tanish" : "Ohang aniqlash"}
         </p>
         <button
           onClick={onExit}
@@ -254,7 +298,9 @@ export default function ListeningSession({
       {/* Audio player card */}
       <div className="rounded-3xl border-2 border-border bg-card p-8 text-center space-y-4">
         <p className="text-sm text-muted-foreground">
-          Qaysi so&apos;zni eshityapsiz?
+          {mode === "word"
+            ? "Qaysi so'zni eshityapsiz?"
+            : "Qaysi ohang eshitildi?"}
         </p>
         <div className="flex items-center justify-center gap-3">
           <button
@@ -278,6 +324,26 @@ export default function ListeningSession({
             <RotateCcw className="w-5 h-5" />
           </button>
         </div>
+
+        {/* Speed controls */}
+        <div className="flex items-center justify-center gap-2 pt-2">
+          <Gauge className="w-4 h-4 text-muted-foreground" />
+          {SPEEDS.map((s) => (
+            <button
+              key={s}
+              onClick={() => changeSpeed(s)}
+              className={cn(
+                "text-xs font-medium px-2.5 py-1 rounded-md transition-colors",
+                speed === s
+                  ? "bg-primary text-primary-foreground"
+                  : "bg-secondary text-muted-foreground hover:text-foreground"
+              )}
+            >
+              {s}x
+            </button>
+          ))}
+        </div>
+
         {loadError && (
           <p className="text-xs text-red-600">
             Audio yuklanmadi. Qaytadan urinib ko&apos;ring.
@@ -286,7 +352,12 @@ export default function ListeningSession({
       </div>
 
       {/* Options grid */}
-      <div className="grid grid-cols-2 gap-3">
+      <div
+        className={cn(
+          "grid gap-3",
+          mode === "word" ? "grid-cols-2" : "grid-cols-2 sm:grid-cols-4"
+        )}
+      >
         {current.options.map((opt, i) => {
           const isCorrect = i === current.correctIndex;
           const isChosen = selected === i;
@@ -297,7 +368,10 @@ export default function ListeningSession({
               onClick={() => pick(i)}
               disabled={graded}
               className={cn(
-                "relative rounded-2xl border-2 p-6 transition-all font-chinese text-4xl min-h-24",
+                "relative rounded-2xl border-2 p-6 transition-all min-h-24",
+                mode === "word"
+                  ? "font-chinese text-4xl"
+                  : "font-semibold text-sm",
                 !show &&
                   "bg-card hover:border-primary hover:bg-primary/5 cursor-pointer",
                 show && isCorrect && "bg-green-500/10 border-green-500",
@@ -326,10 +400,15 @@ export default function ListeningSession({
             exit={{ opacity: 0 }}
             className="rounded-2xl bg-secondary p-4 space-y-1"
           >
-            <p className="pinyin text-sm text-primary">
-              {current.clip.transcript_pinyin}
-            </p>
-            <p className="text-base font-semibold">
+            <div className="flex items-center gap-2 flex-wrap">
+              <span className="font-chinese text-2xl">
+                {current.clip.transcript_zh}
+              </span>
+              <span className="pinyin text-sm text-primary">
+                {current.clip.transcript_pinyin}
+              </span>
+            </div>
+            <p className="text-sm font-semibold">
               {current.clip.translation_uz}
             </p>
           </motion.div>
