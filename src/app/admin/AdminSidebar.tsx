@@ -6,6 +6,7 @@ import {
   BarChart3,
   BookOpen,
   FileText,
+  Headphones,
   LogOut,
   MessageSquare,
   Users,
@@ -17,6 +18,7 @@ const nav = [
   { href: "/admin/messages", label: "Xabarlar", icon: MessageSquare },
   { href: "/admin/blog", label: "Blog", icon: FileText },
   { href: "/admin/lessons", label: "Darslar", icon: BookOpen },
+  { href: "/admin/listening", label: "Tinglash", icon: Headphones },
 ];
 
 export default function AdminSidebar() {
