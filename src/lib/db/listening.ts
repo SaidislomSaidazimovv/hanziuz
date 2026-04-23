@@ -141,6 +141,60 @@ export async function getListeningProgressSummary(userId: string): Promise<{
 }
 
 /**
+ * Reinforce-on-miss: when a user gets a listening question wrong, feed the
+ * underlying vocab into the SRS system so it reappears in flashcards soon.
+ * Treats the miss as an SM-2 "again" rating:
+ *   - resets repetitions to 0
+ *   - sets next_review_at to ~6 hours from now
+ *   - ease_factor drops by 0.2 (floor 1.3)
+ *   - lapses increment
+ * If the clip has no vocab_id mapping (older clips without it), silently skips.
+ */
+export async function reinforceOnListeningMiss(
+  userId: string,
+  clipId: string
+): Promise<void> {
+  const supabase = createClient();
+  const { data: clip } = await supabase
+    .from("listening_clips")
+    .select("vocab_id")
+    .eq("id", clipId)
+    .maybeSingle();
+  const vocabId = (clip as { vocab_id: string | null } | null)?.vocab_id;
+  if (!vocabId) return;
+
+  const { data: existing } = await supabase
+    .from("srs_reviews")
+    .select("ease_factor, lapses")
+    .eq("user_id", userId)
+    .eq("vocab_id", vocabId)
+    .maybeSingle();
+
+  const prev = existing as {
+    ease_factor: number | null;
+    lapses: number | null;
+  } | null;
+
+  const newEase = Math.max(1.3, (prev?.ease_factor ?? 2.5) - 0.2);
+  const newLapses = (prev?.lapses ?? 0) + 1;
+  const nextReview = new Date(Date.now() + 6 * 3600 * 1000);
+
+  await supabase.from("srs_reviews").upsert(
+    {
+      user_id: userId,
+      vocab_id: vocabId,
+      ease_factor: newEase,
+      interval_days: 1,
+      repetitions: 0,
+      next_review_at: nextReview.toISOString(),
+      last_reviewed_at: new Date().toISOString(),
+      lapses: newLapses,
+    },
+    { onConflict: "user_id,vocab_id" }
+  );
+}
+
+/**
  * Extracts the Mandarin tone number (1-4) from a pinyin string by looking
  * for the tone mark. Returns 5 for neutral (no mark).
  */

@@ -20,6 +20,7 @@ import { useUser } from "@/lib/user-context";
 import {
   getListeningClipsByHanzi,
   recordListeningAttempt,
+  reinforceOnListeningMiss,
   type ListeningClip,
 } from "@/lib/db/listening";
 import type { DbVocab } from "@/lib/db";
@@ -173,6 +174,9 @@ export default function LessonListeningStep({
           /* non-blocking */
         }
       );
+      if (!correct) {
+        reinforceOnListeningMiss(userId, current.clip.id).catch(() => {});
+      }
     }
   }
 

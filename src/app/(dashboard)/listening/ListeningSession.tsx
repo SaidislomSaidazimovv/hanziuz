@@ -21,6 +21,7 @@ import { useUser } from "@/lib/user-context";
 import {
   extractTone,
   recordListeningAttempt,
+  reinforceOnListeningMiss,
   type ListeningClip,
   type ListeningMode,
 } from "@/lib/db/listening";
@@ -178,6 +179,12 @@ export default function ListeningSession({
           // Non-blocking; progress tracking failures don't interrupt the session.
         }
       );
+      // On "word" miss, push the word back into the SRS rotation so the user
+      // sees it in flashcards within ~6 hours. Tone mode tests pronunciation
+      // feel, not vocabulary, so we don't penalize SRS for tone misses.
+      if (!correct && mode === "word") {
+        reinforceOnListeningMiss(userId, current.clip.id).catch(() => {});
+      }
     }
   }
 
