@@ -20,12 +20,11 @@ export default function AppleIcon() {
           display: "flex",
           alignItems: "center",
           justifyContent: "center",
-          background: "#ffffff",
+          background: "transparent",
           fontSize: 140,
           fontWeight: 700,
           color: "#DC2626",
           fontFamily: "serif",
-          borderRadius: 40,
         }}
       >
         汉
