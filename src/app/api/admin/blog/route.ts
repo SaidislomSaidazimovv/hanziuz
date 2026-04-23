@@ -1,4 +1,5 @@
 import { cookies } from "next/headers";
+import { revalidatePath } from "next/cache";
 import { createClient } from "@supabase/supabase-js";
 import { ADMIN_COOKIE_NAME, isValidAdminCookie } from "@/lib/admin-auth";
 
@@ -55,6 +56,10 @@ export async function POST(request: Request) {
     if (error) {
       return Response.json({ error: error.message }, { status: 500 });
     }
+
+    // Drop the ISR cache so the new post is visible immediately.
+    revalidatePath("/blog");
+    if (data?.slug) revalidatePath(`/blog/${data.slug}`);
 
     return Response.json({ success: true, post: data });
   } catch {

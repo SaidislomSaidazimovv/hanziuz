@@ -1,4 +1,5 @@
 import { cookies } from "next/headers";
+import { revalidatePath } from "next/cache";
 import { createClient } from "@supabase/supabase-js";
 import { ADMIN_COOKIE_NAME, isValidAdminCookie } from "@/lib/admin-auth";
 
@@ -47,6 +48,14 @@ export async function PATCH(
       return Response.json({ error: "Bo'sh update" }, { status: 400 });
     }
 
+    // Fetch old slug first so we can invalidate both old and new paths in case
+    // the slug itself changed.
+    const { data: existing } = await adminClient()
+      .from("blog_posts")
+      .select("slug")
+      .eq("id", id)
+      .single();
+
     const { data, error } = await adminClient()
       .from("blog_posts")
       .update(update)
@@ -57,6 +66,12 @@ export async function PATCH(
     if (error) {
       return Response.json({ error: error.message }, { status: 500 });
     }
+
+    revalidatePath("/blog");
+    if (existing?.slug) revalidatePath(`/blog/${existing.slug}`);
+    if (data?.slug && data.slug !== existing?.slug)
+      revalidatePath(`/blog/${data.slug}`);
+
     return Response.json({ success: true, post: data });
   } catch {
     return Response.json({ error: "Server error" }, { status: 500 });
@@ -73,6 +88,13 @@ export async function DELETE(
     }
     const { id } = await params;
 
+    // Grab slug before delete so we can invalidate the article path too.
+    const { data: existing } = await adminClient()
+      .from("blog_posts")
+      .select("slug")
+      .eq("id", id)
+      .single();
+
     const { error } = await adminClient()
       .from("blog_posts")
       .delete()
@@ -81,6 +103,10 @@ export async function DELETE(
     if (error) {
       return Response.json({ error: error.message }, { status: 500 });
     }
+
+    revalidatePath("/blog");
+    if (existing?.slug) revalidatePath(`/blog/${existing.slug}`);
+
     return Response.json({ success: true });
   } catch {
     return Response.json({ error: "Server error" }, { status: 500 });
