@@ -14,6 +14,7 @@ import {
   Lock,
   Eye,
   EyeOff,
+  Target,
 } from "lucide-react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { useUser } from "@/lib/user-context";
@@ -290,8 +291,116 @@ export default function SettingsClient() {
         </Button>
       </div>
 
+      {/* Daily goal */}
+      <DailyGoalSection userId={userData.id} />
+
       {/* Password change */}
       <PasswordChangeSection />
+    </div>
+  );
+}
+
+const GOAL_PRESETS = [
+  { value: 25, label: "Oson", hint: "~1 dars" },
+  { value: 50, label: "Odatiy", hint: "~2 dars" },
+  { value: 100, label: "Jiddiy", hint: "~4 dars" },
+  { value: 150, label: "Ustivor", hint: "~6 dars" },
+];
+
+function DailyGoalSection({ userId }: { userId: string }) {
+  const [goal, setGoal] = useState<number | null>(null);
+  const [saving, setSaving] = useState<number | null>(null);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!userId) return;
+    let cancelled = false;
+    (async () => {
+      const supabase = createClient();
+      const { data } = await supabase
+        .from("profiles")
+        .select("daily_goal_xp")
+        .eq("id", userId)
+        .single();
+      if (!cancelled) {
+        setGoal(
+          (data as { daily_goal_xp: number | null } | null)?.daily_goal_xp ?? 50
+        );
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [userId]);
+
+  async function save(value: number) {
+    if (value === goal) return;
+    setError(null);
+    setSaving(value);
+    const prev = goal;
+    setGoal(value); // optimistic
+    try {
+      const supabase = createClient();
+      const { error: updErr } = await supabase
+        .from("profiles")
+        .update({ daily_goal_xp: value })
+        .eq("id", userId);
+      if (updErr) throw updErr;
+    } catch {
+      setGoal(prev);
+      setError("Saqlab bo'lmadi");
+    } finally {
+      setSaving(null);
+    }
+  }
+
+  return (
+    <div className="rounded-2xl border bg-card p-6 space-y-4">
+      <div>
+        <h2 className="font-semibold flex items-center gap-2">
+          <Target className="w-4 h-4 text-primary" />
+          Kunlik maqsad
+        </h2>
+        <p className="text-sm text-muted-foreground mt-0.5">
+          Har kuni qancha XP to&apos;plashni maqsad qilasiz?
+        </p>
+      </div>
+
+      {error && (
+        <p className="text-sm text-red-600">{error}</p>
+      )}
+
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+        {GOAL_PRESETS.map((preset) => {
+          const active = goal === preset.value;
+          const isSaving = saving === preset.value;
+          return (
+            <button
+              key={preset.value}
+              onClick={() => save(preset.value)}
+              disabled={saving !== null}
+              className={`rounded-xl border p-3 text-left transition-colors ${
+                active
+                  ? "border-primary bg-primary/10"
+                  : "bg-card hover:bg-secondary/50"
+              } ${saving !== null && !isSaving ? "opacity-40" : ""}`}
+            >
+              <div className="flex items-center justify-between">
+                <p className="text-lg font-bold">{preset.value} XP</p>
+                {isSaving && (
+                  <Loader2 className="w-3 h-3 animate-spin text-primary" />
+                )}
+              </div>
+              <p className="text-xs text-muted-foreground mt-0.5">
+                {preset.label}
+              </p>
+              <p className="text-[10px] text-muted-foreground mt-0.5">
+                {preset.hint}
+              </p>
+            </button>
+          );
+        })}
+      </div>
     </div>
   );
 }
