@@ -4,6 +4,8 @@ import { useState, useCallback } from "react";
 import { motion } from "framer-motion";
 import { Volume2, Loader2, RotateCcw } from "lucide-react";
 import type { DbVocab } from "@/lib/db";
+import { TonesDisplay } from "@/components/ui/ToneCurve";
+import { extractTones } from "@/lib/tones";
 
 interface FlashCardProps {
   word: DbVocab;
@@ -102,7 +104,13 @@ export default function FlashCard({ word, onFlip }: FlashCardProps) {
           <span className="hanzi-display text-4xl text-muted-foreground mb-2">
             {word.hanzi}
           </span>
-          <p className="pinyin text-xl text-primary mb-3">{word.pinyin}</p>
+          <p className="pinyin text-xl text-primary mb-2">{word.pinyin}</p>
+          <TonesDisplay
+            tones={extractTones(word.pinyin)}
+            width={36}
+            showNumbers
+            className="mb-3"
+          />
           <p className="text-3xl font-bold mb-1">{word.meaning_uz}</p>
           <p className="text-sm text-muted-foreground">{word.meaning_en}</p>
 

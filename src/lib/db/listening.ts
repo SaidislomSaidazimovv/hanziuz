@@ -194,20 +194,6 @@ export async function reinforceOnListeningMiss(
   );
 }
 
-/**
- * Extracts the Mandarin tone number (1-4) from a pinyin string by looking
- * for the tone mark. Returns 5 for neutral (no mark).
- */
-export function extractTone(pinyin: string): 1 | 2 | 3 | 4 | 5 {
-  const TONE: Record<string, 1 | 2 | 3 | 4> = {
-    ā: 1, ē: 1, ī: 1, ō: 1, ū: 1, "ǖ": 1,
-    á: 2, é: 2, í: 2, ó: 2, ú: 2, "ǘ": 2,
-    ǎ: 3, ě: 3, ǐ: 3, ǒ: 3, ǔ: 3, "ǚ": 3,
-    à: 4, è: 4, ì: 4, ò: 4, ù: 4, "ǜ": 4,
-  };
-  for (const ch of pinyin) {
-    const t = TONE[ch];
-    if (t) return t;
-  }
-  return 5;
-}
+// Tone extraction lives in lib/tones.ts; re-exported here for backward
+// compatibility with existing callers in the listening session/lesson step.
+export { extractTone } from "@/lib/tones";

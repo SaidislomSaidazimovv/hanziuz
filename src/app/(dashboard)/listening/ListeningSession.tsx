@@ -15,9 +15,11 @@ import {
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
+import { TonesDisplay } from "@/components/ui/ToneCurve";
 import { cn } from "@/lib/utils";
 import { addXP, createNotification } from "@/lib/db";
 import { useUser } from "@/lib/user-context";
+import { extractTones } from "@/lib/tones";
 import {
   extractTone,
   recordListeningAttempt,
@@ -414,6 +416,11 @@ export default function ListeningSession({
               <span className="pinyin text-sm text-primary">
                 {current.clip.transcript_pinyin}
               </span>
+              <TonesDisplay
+                tones={extractTones(current.clip.transcript_pinyin)}
+                width={32}
+                showNumbers
+              />
             </div>
             <p className="text-sm font-semibold">
               {current.clip.translation_uz}
