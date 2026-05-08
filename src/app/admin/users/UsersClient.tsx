@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useMemo, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -218,7 +219,12 @@ export default function UsersClient({
                   )}
                 </td>
                 <td className="px-4 py-3 text-neutral-900">
-                  {u.name ?? "—"}
+                  <Link
+                    href={`/admin/users/${u.id}`}
+                    className="hover:text-[#DC2626] transition-colors"
+                  >
+                    {u.name ?? "—"}
+                  </Link>
                 </td>
                 <td className="px-4 py-3 text-neutral-600">{u.email}</td>
                 <td className="px-4 py-3 text-neutral-600">
